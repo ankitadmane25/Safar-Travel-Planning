@@ -1,0 +1,246 @@
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Plan</title>
+    <style>
+        body {
+            background-color: #cdc3b2;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        .logo {
+            margin-left: 10px;
+        }
+        .head {
+            background: linear-gradient(45deg, #d4953e, rgb(155, 107, 4), #da4804);
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between; /* Space out elements */
+            padding: 10px 20px;
+        }
+        .logo-title-container {
+            display: flex;
+            align-items: center; /* Align logo and title vertically */
+        }
+        .title {
+            font-size: 2.5rem;
+            color: rgba(227, 225, 225, 0.842);
+            margin-left: 20px; /* Space between logo and title */
+        }
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: auto;
+            padding: 20px;
+        }
+        .card-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .card {
+            width: 100%;
+            max-width: 250px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background: white;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: scale(1.05);
+        }
+        .card img {
+            width: 100%;
+            height: auto;
+            max-height: 150px;
+            object-fit: cover;
+        }
+        .card-content {
+            padding: 10px;
+        }
+        .cost {
+            font-weight: bold;
+            color: green;
+        }
+
+        /* --- Responsive Design --- */
+        @media (max-width: 768px) {
+            .head {
+                flex-direction: column;
+                text-align: center;
+            }
+            .logo {
+                margin: 0;
+            }
+            .title {
+                font-size: 1.5rem;
+            }
+            .card {
+                max-width: 180px;
+            }
+        }
+        @media (max-width: 480px) {
+            .title {
+                font-size: 1.3rem;
+            }
+            .card {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="head">
+        <div class="logo-title-container">
+            <img src="logo.png" class="logo" alt="Logo" height="80px" width="100px" />
+            <h1 class="title">Safar</h1>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Your Travel Plan</h2>
+        <p><strong id="userName"></strong>, your trip from <strong id="fromDistrict"></strong> to <strong id="toDistrict"></strong> for <strong id="numTravelers"></strong> people using a <strong id="vehicleType"></strong> will cost approximately <span class="cost">₹<span id="budget"></span></span>.</p>
+        
+        <h3>Recommended Places:</h3>
+        <div id="placesContainer" class="card-container">
+            <p>Loading places...</p>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const name = urlParams.get('name');
+        const travelers = urlParams.get('travelers');
+        const fromDistrict = urlParams.get('fromDistrict');
+        let toDistrict = urlParams.get('toDistrict');
+        toDistrict = toDistrict.charAt(0).toUpperCase() + toDistrict.slice(1).toLowerCase();
+        const placeType = urlParams.get('placeType');
+        const vehicleType = urlParams.get('vehicleType');
+        const budget = urlParams.get('budget');
+
+        document.getElementById('userName').textContent = name;
+        document.getElementById('fromDistrict').textContent = fromDistrict;
+        document.getElementById('toDistrict').textContent = toDistrict;
+        document.getElementById('numTravelers').textContent = travelers;
+        document.getElementById('vehicleType').textContent = vehicleType;
+        document.getElementById('budget').textContent = budget;
+
+        const allPlaces = {
+            Pune: [
+                { name: 'Dr Babasaheb Ambedkar Museum & Memorial', img: 'images/symboisis.jpg', cost: 500 },
+                { name: 'Lonavala', img: 'images/lonavla.jpg', cost: 2000 },
+                { name: 'Khandala', img: 'images/khandala.jpg', cost: 2200 },
+                { name: 'Shaniwar Wada', img: 'images/shanivar.jpg', cost: 1000 },
+                { name: 'Aga Khan Palace', img: 'images/aga_khan.jpg', cost: 1500 },
+                { name: 'Rajiv Gandhi Zoo', img: 'images/rajiv.jpg', cost: 500 },
+                { name: 'Jejuri', img: 'images/jejuri.jpg', cost: 500 },
+                { name: 'Sinhagad Fort', img: 'images/Sinhagad.jpg', cost: 500 },
+                { name: 'Lohagad Fort', img: 'images/lohgad.jpg', cost: 500 },    
+                { name: 'Dagdu Seth Ganesh Temple', img: 'images/Dagdu.jpg', cost: 500 },
+                { name: 'Sarasbaug-Peshve Park', img: 'images/sarasbagh.jpg', cost: 500 },
+                { name: 'Khadakwasala Dam', img: 'images/khadak.jpg', cost: 500 },
+                { name: 'Laal Mahaal', img: 'images/lal.jpg', cost: 500 },
+                { name: 'Shivsrushti Historical Theme Park Pune', img: 'images/shivshristi.jpg', cost: 500 },
+                { name: 'Mahatma Phule Museum', img: 'images/phule_m.jpg', cost: 500 },
+                { name: "Joshi's Museum Of Miniature Railways", img: 'images/rail_m.jpg', cost: 500 },
+                { name: 'Phule Wada', img: 'images/phule_w.jpg', cost: 500 },
+                { name: 'Parvati Hill', img: 'images/parvati.jpg', cost: 500 },
+                { name: 'Vishrambaug Wada', img: 'images/vishrambaug.jpg', cost: 500 },
+                { name: 'P L Deshpande Garden', img: 'images/deshpande.jpg', cost: 500 },
+                { name: 'Mahadji Shinde Chhatri', img: 'images/mahadji.jpg', cost: 500 },
+                { name: 'Blades of Glory Cricket Museum', img: 'images/glory.jpg', cost: 500 },
+                { name: 'Vetal Tekdi', img: 'images/vetal.jpg', cost: 500 },
+
+            ],
+            Raigad: [
+                { name: 'Alibaug Beach', img: 'images/alibagh.jpg', cost: 1500 },
+                { name: 'Raigad Fort', img: 'images/raigad.jpg', cost: 1000 }
+            ],
+            Satara: [
+                { name: 'Mahabaleshwar', img: 'images/mahabaleshwar.jpg', cost: 3000 }
+            ],
+            Sindhudurg: [
+                { name: 'Tarkarli Beach', img: 'images/tarkali.jpg', cost: 3500 }
+            ],
+            Nagpur: [
+                { name: 'Deekshabhoomi', img: 'images/Deekshabhoomi.jpg', cost: 500 },
+                { name: 'Pench Tiger Reserve', img: 'images/pench.jpg', cost: 4000 },
+                { name: 'Dragon Palace', img: 'images/dragon.jpg', cost: 500 },
+                { name: 'Shri Ganesh Mandir Tekdi', img: 'images/ganesh.jpg', cost: 500 },
+                { name: 'Hazrat Baba Tajuddin Dargah', img: 'images/hazrat.jpg', cost: 500 },
+                { name: 'Ramtek', img: 'images/ramtek.jpg', cost: 500 },
+                { name: 'Fun N Food Village Nagpur', img: 'images/fun.jpg', cost: 500 },
+                { name: 'Laal Mahaal', img: 'images/lal.jpg', cost: 500 },
+
+            ],
+            Kolhapur: [
+                { name: 'Mahalaxmi Temple, Kolhapur', img: 'images/maha.jpg', cost: 500 },
+                { name: 'Shahu Palace ', img: 'images/shau_palace.jpg', cost: 500 },
+                { name: 'Rankala Lake', img: 'images/rankala.jpg', cost: 500 },
+                { name: 'Sajja Kothi', img: 'images/sajja.jpg', cost: 500 },
+                { name: 'Bhavani Mandap', img: 'images/bhavani.jpg', cost: 500 },
+                { name: 'Teen Darwaja', img: 'images/teen.jpg', cost: 500 },
+                { name: 'Panhala Fort', img: 'images/panhala.jpg', cost: 500 },
+                { name: 'Shalini Palace', img: 'images/shalini.jpg', cost: 500 },
+                { name: 'Rautwadi Waterfall, Radhanagri', img: 'images/rautwadi.jpg', cost: 500 },
+
+                
+            ],
+            Aurangabad: [
+                { name: 'Siddharth Garden', img: 'images/Siddharth.jpg', cost: 5000 },
+                { name: 'Ajanta Caves', img: 'images/ajanta.jpg', cost: 5000 },
+                { name: 'Bibi Ka Maqbara', img: 'images/bibi.jpg', cost: 5000 },
+                { name: 'Panchakki', img: 'images/pan.jpg', cost: 5000 },
+                { name: 'Ellora Caves', img: 'images/Ellora.jpg', cost: 5000 },
+                { name: 'Mhaismal', img: 'images/mhais.jpg', cost: 5000 },
+                { name: 'Dr. Babasaheb Ambedkar Marathwada University', img: 'images/university.jpg', cost: 5000 },
+                { name: 'Jayakwadi Dam', img: 'images/jayakwadi.jpg', cost: 5000 },
+                { name: 'Sant Dynaneshwar Udyaan', img: 'images/dnyaneshwar_garden.jpg', cost: 5000 },
+                { name: 'Bhadra Maruti Temple', img: 'images/bhadra.jpg', cost: 5000 },
+                { name: 'Daultabad Fort', img: 'images/Daultabad.jpg', cost: 5000 },
+                { name: 'Soneri Mahal', img: 'images/soneri.jpg', cost: 5000 },
+                { name: 'Dr. Salim Ali Lake', img: 'images/salim.jpg', cost: 5000 },
+                { name: 'Pittalkhora Caves', img: 'images/pittal.jpg', cost: 5000 },
+                { name: 'Gautala Autramghat Sanctuary', img: 'images/gautala.jpg', cost: 5000 },
+                { name: 'Goga Baba Hill', img: 'images/goga.jpg', cost: 5000 },
+                { name: 'Chhatrapati Shivaji Maharaj Museum', img: 'images/musium.jpg', cost: 5000 },
+                { name: 'Aurangabad Caves', img: 'images/caves.jpg', cost: 5000 },
+                { name: 'H2O Waterpark', img: 'images/H2o.jpg', cost: 5000 },
+                { name: 'Bani Begum Garden', img: 'images/goga.jpg', cost: 5000 },
+                { name: 'Tomb of Mughal Emperor Aurangzeb Alamgir', img: 'images/tomb.jpg', cost: 5000 },
+                
+            ]
+        };
+
+        const placesContainer = document.getElementById('placesContainer');
+        const filteredPlaces = allPlaces[toDistrict] || [];
+
+        if (filteredPlaces.length > 0) {
+            placesContainer.innerHTML = "";
+            filteredPlaces.forEach(place => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <img src="${place.img}" alt="${place.name}">
+                    <div class="card-content">
+                        <h3>${place.name}</h3>
+                        <p>Estimated Cost: <span class="cost">₹${place.cost}</span></p>
+                    </div>
+                `;
+                placesContainer.appendChild(card);
+            });
+        } else {
+            placesContainer.innerHTML = `<p>No places available in <strong>${toDistrict}</strong> for this category.</p>`;
+        }
+    </script>
+</body>
+</html>
