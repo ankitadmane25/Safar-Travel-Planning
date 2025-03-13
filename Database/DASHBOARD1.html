@@ -358,16 +358,31 @@ document.querySelectorAll(".sidebar ul li a").forEach((link) => {
 
 function getBotResponse(input) {
   input = input.toLowerCase();
+
   if (input.includes("hello") || input.includes("hi")) {
-    return "Hello I am Topu! How can I assist you with your travel plans?";
+    return "Hello! I am Topu. How can I assist you with your travel plans?";
   } else if (input.includes("recommend")) {
     return "I recommend visiting Lonavala, Mahabaleshwar, or Ajanta Caves!";
-  } else if (input.includes("saved trips")) {
-    return "You can find your saved trips in the 'Saved Trips' section.";
-  } else if (input.includes("login issue")) {
-    return "Please make sure you're using the correct credentials. If the issue persists, try resetting your password.";
+  } else if (input.includes("budget trip") || input.includes("low cost trip")) {
+    return "For a budget trip, consider visiting Sinhagad Fort, Panchgani, or Bhandardara. Public transport and local food can help save costs!";
+  } else if (input.includes("adventure") || input.includes("trekking")) {
+    return "If you love adventure, you should visit Rajmachi Fort, Harishchandragad, or Kalsubai Peak!";
+  } else if (input.includes("beach") || input.includes("coastal")) {
+    return "For beautiful beaches, try Alibaug, Ganpatipule, or Tarkarli!";
+  } else if (input.includes("historical places")) {
+    return "For history lovers, I suggest Ajanta Caves, Ellora Caves, and Raigad Fort.";
+  } else if (input.includes("wildlife") || input.includes("forest")) {
+    return "You might enjoy visiting Tadoba National Park, Pench National Park, or Bhimashankar Wildlife Sanctuary.";
+  } else if (input.includes("family trip") || input.includes("kids friendly")) {
+    return "For a family-friendly trip, try Mahabaleshwar, Lonavala, or Imagica Theme Park!";
+  } else if (input.includes("honeymoon") || input.includes("romantic place")) {
+    return "For a romantic getaway, I recommend Lavasa, Matheran, or Mulshi Lake.";
+  } else if (input.includes("travel tips")) {
+    return "Always carry water, check the weather forecast, and book accommodations in advance!";
+  } else if (input.includes("best season") || input.includes("best time")) {
+    return "For hill stations, visit in monsoon or winter (June-Feb). Beaches are best in winter (Nov-Feb).";
   } else {
-    return "I'm not sure about that. Try asking something related to travel planning!";
+    return "I'm not sure about that. Try asking about travel destinations, budget trips, or adventure spots!";
   }
 }
   
