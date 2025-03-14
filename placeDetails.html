@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tourism Place Details with Geocoding</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+    .head {
+      background: linear-gradient(45deg, #d4953e, rgb(155, 107, 4), #da4804);
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+    }
+    .logo-title-container {
+      display: flex;
+      align-items: center;
+    }
+    .title {
+      font-size: 2.5rem;
+      color: rgba(227, 225, 225, 0.842);
+      margin-left: 20px;
+    }
+    main {
+      max-width: 900px;
+      margin: 20px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    h1, h2, h3 {
+      color: #333;
+      margin: 0 0 10px;
+    }
+    #placeInfo {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    /* Styling for the photograph */
+    #placePhoto {
+      max-width: 40%;
+      height: auto;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    /* Right side text container */
+    .place-text {
+      flex: 1;
+      text-align: left;
+    }
+    #map {
+      width: 100%;
+      height: 400px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+    .noData {
+      color: red;
+      font-weight: bold;
+    }
+    /* Style for the tourism place photograph */
+    /* .place-photo {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin: 15px 0;
+    } */
+    /* Nearby hotels and restaurants styling */
+    .nearby-section {
+      margin-top: 30px;
+    }
+    .nearby-item {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 10px;
+      background: #fafafa;
+      display: inline-block;
+      width: 250px;
+      vertical-align: top;
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+    }
+    .nearby-item h4 {
+      margin: 0 0 5px;
+      font-size: 1.1rem;
+      color: #333;
+    }
+    .nearby-item p {
+      margin: 2px 0;
+      font-size: 0.95rem;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="head">
+      <div class="logo-title-container">
+        <img src="logo.png" class="logo" alt="Logo" height="80px" width="100px" />
+        <h1 class="title">Safar</h1>
+      </div>
+    </div>
+  </nav>
+  <main>
+    <!-- Tourism Place Info -->
+    <section id="placeInfo">
+      <!-- Place Photograph -->
+      <img id="placePhoto" class="place-photo" src="" alt="Tourism Place Photo" style="display: none;">
+      <!-- Text Container -->
+      <div class="place-text">
+        <h2 id="placeName">Tourism Place</h2>
+        <p id="placeDescription">Place description will appear here.</p>
+      </div>
+    </section>
+    
+    <!-- Map Section -->
+    <section id="mapSection">
+      <h3>Map & Directions</h3>
+      <div id="map"></div>
+    </section>
+    
+    <!-- Nearby Hotels Section -->
+    <section class="nearby-section" id="hotelsSection">
+      <h3>Nearby Hotels</h3>
+      <div id="hotelsContainer">
+        <p>Loading hotels...</p>
+      </div>
+    </section>
+    
+    <!-- Nearby Restaurants Section -->
+    <section class="nearby-section" id="restaurantsSection">
+      <h3>Nearby Restaurants</h3>
+      <div id="restaurantsContainer">
+        <p>Loading restaurants...</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // Function to extract query parameters from the URL.
+    function getQueryParam(param) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(param);
+    }
+
+    // Geocoding function using OpenStreetMap's Nominatim API.
+    async function getCoordinates(placeName) {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(placeName)}&format=json&limit=1`;
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data && data.length > 0) {
+          return {
+            lat: parseFloat(data[0].lat),
+            lng: parseFloat(data[0].lon)
+          };
+        } else {
+          throw new Error("No results found.");
+        }
+      } catch (error) {
+        console.error("Geocoding error:", error);
+        return null;
+      }
+    }
+
+    // Details for tourism places, extended to include an image URL.
+    const placesDetails = {
+      "Dr Babasaheb Ambedkar Museum & Memorial": { 
+         description: "A museum in Pune showcasing Dr. Ambedkar's legacy.",
+         img: "images/Pune/symboisis.jpg"
+      },
+      "Lonavala": { 
+         description: "A beautiful hill station in Maharashtra known for scenic valleys and waterfalls.",
+         img: "images/Pune/lonavla.jpg"
+      },
+      "Khandala": { 
+         description: "A scenic getaway near Lonavala with stunning views.",
+         img: "images/Pune/khandala.jpg"
+      },
+      "Shaniwar Wada": { 
+         description: "A historic fort in Pune with rich cultural heritage.",
+         img: "images/Pune/shanivar.jpg"
+      },
+      "Aga Khan Palace": { 
+         description: "A monument in Pune with historical significance.",
+         img: "images/Pune/aga_khan.jpg"
+      },
+      "Rajiv Gandhi Zoo": { 
+         description: "A zoo in Pune with a diverse collection of wildlife.",
+         img: "images/Pune/rajiv.jpg"
+      },
+      "Jejuri": { 
+         description: "A temple town near Pune known for its spiritual significance.",
+         img: "images/Pune/jejuri.jpg"
+      },
+      "Sinhagad Fort": { 
+         description: "A historic fort offering panoramic views near Pune.",
+         img: "images/Pune/Sinhagad.jpg"
+      },
+      "Lohagad Fort": { 
+         description: "A fort known for its trekking trails near Pune.",
+         img: "images/Pune/lohgad.jpg"
+      },
+      "Dagdu Seth Ganesh Temple": { 
+         description: "A temple dedicated to Lord Ganesh in Pune.",
+         img: "images/Pune/Dagdu.jpg"
+      },
+      "Sarasbaug-Peshve Park": { 
+         description: "A popular park in Pune for relaxation and leisure.",
+         img: "images/Pune/sarasbagh.jpg"
+      },
+      "Khadakwasala Dam": { 
+         description: "A scenic dam area in Pune ideal for picnics.",
+         img: "images/Pune/khadak.jpg"
+      },
+      "Laal Mahaal": { 
+         description: "A historical palace in Pune with a regal past.",
+         img: "images/Pune/lal.jpg"
+      },
+      "Shivsrushti Historical Theme Park Pune": { 
+         description: "A theme park showcasing Pune's history.",
+         img: "images/Pune/shivshristi.jpg"
+      },
+      "Mahatma Phule Museum": { 
+         description: "A museum in Pune celebrating social reformers.",
+         img: "images/Pune/phule_m.jpg"
+      },
+      "Joshi's Museum Of Miniature Railways": { 
+         description: "A quirky museum in Pune featuring miniature trains.",
+         img: "images/Pune/rail_m.jpg"
+      },
+      "Phule Wada": { 
+         description: "A historic palace in Pune.",
+         img: "images/Pune/phule_w.jpg"
+      },
+      "Parvati Hill": { 
+         description: "A hill in Pune with temples and panoramic views.",
+         img: "images/Pune/parvati.jpg"
+      },
+      "Vishrambaug Wada": { 
+         description: "A historic mansion in Pune.",
+         img: "images/Pune/vishrambaug.jpg"
+      },
+      "P L Deshpande Garden": { 
+         description: "A well-known public garden in Pune.",
+         img: "images/Pune/deshpande.jpg"
+      },
+      "Mahadji Shinde Chhatri": { 
+         description: "A memorial in Pune honoring a historical figure.",
+         img: "images/Pune/mahadji.jpg"
+      },
+      "Blades of Glory Cricket Museum": { 
+         description: "A museum dedicated to cricket in Pune.",
+         img: "images/Pune/glory.jpg"
+      },
+      "Vetal Tekdi": { 
+         description: "A hill in Pune popular for its natural beauty.",
+         img: "images/Pune/vetal.jpg"
+      },
+      "Alibaug Beach": { 
+         description: "A popular beach in the Raigad district.",
+         img: "images/alibagh.jpg"
+      },
+      "Raigad Fort": { 
+         description: "A historic fort located in Raigad.",
+         img: "images/raigad.jpg"
+      },
+      "Mahabaleshwar": { 
+         description: "A hill station in Satara famous for strawberries and scenic views.",
+         img: "images/mahabaleshwar.jpg"
+      },
+      "Tarkarli Beach": { 
+         description: "A pristine beach in Sindhudurg known for its clear waters.",
+         img: "images/tarkali.jpg"
+      },
+      "Global Vipassana Pagoda": { 
+         description: "A monument in Mumbai dedicated to Vipassana meditation.",
+         img: "images/Mumbai/pagoda.jpg"
+      },
+      "Chaityabhoomi Dr. Babasaheb Ambedkar Smarak": { 
+         description: "A memorial in Mumbai honoring Dr. Ambedkar.",
+         img: "images/Mumbai/chaitya_bhoomi.jpg"
+      },
+      "Shree Siddhivinayak Temple": { 
+         description: "A famous temple in Mumbai revered by many.",
+         img: "images/Mumbai/siddhivinayak.jpg"
+      },
+      "Gateway Of India Mumbai": { 
+         description: "An iconic gateway in Mumbai and a major tourist attraction.",
+         img: "images/Mumbai/gate_way_of_india.jpg"
+      },
+      "Elephanta Caves": { 
+         description: "Ancient rock-cut caves near Mumbai with historical sculptures.",
+         img: "images/Mumbai/Elephanta.jpg"
+      },
+      "Sanjay Gandhi National Park": { 
+         description: "A large national park in Mumbai offering nature trails and wildlife.",
+         img: "images/Mumbai/sanjay_gandhi_national_park.jpg"
+      },
+      "Chhatrapati Shivaji Maharaj Vastu Sangrahalaya": { 
+         description: "A prominent museum in Mumbai showcasing art and history.",
+         img: "images/Mumbai/vastu_sanghralay.jpg"
+      },
+      "Mani Bhavan Gandhi Sangrahalaya": { 
+         description: "A museum in Mumbai dedicated to Mahatma Gandhi.",
+         img: "images/Mumbai/mani_bhavan.jpg"
+      },
+      "Haji Ali Dargah": { 
+         description: "A revered mosque and dargah located on an islet in Mumbai.",
+         img: "images/Mumbai/haji_ali.jpg"
+      },
+      "Bandra Worli Sea Link Bridge": { 
+         description: "A cable-stayed bridge connecting Bandra and Worli in Mumbai.",
+         img: "images/Mumbai/sea_link.jpg"
+      },
+      "Jehangir Art Gallery": { 
+         description: "An art gallery in Mumbai showcasing contemporary works.",
+         img: "images/Mumbai/jahangir.jpg"
+      },
+      "Marine Drive": { 
+         description: "A famous seaside promenade in Mumbai.",
+         img: "images/Mumbai/marin_drive.jpg"
+      },
+      "Snow Kingdom (Mumbai)": { 
+         description: "An indoor snow park in Mumbai for family fun.",
+         img: "images/Mumbai/snow.jpg"
+      },
+      "Dadasaheb Phalke Chitranagari": { 
+         description: "A film city in Mumbai celebrating Indian cinema.",
+         img: "images/Mumbai/flim_city.jpg"
+      },
+      "Basilica of Our Lady of the Mount (Mount St Mary Church)": { 
+         description: "A historic basilica in Mumbai.",
+         img: "images/Mumbai/church.jpg"
+      },
+      "Bandra Fort": { 
+         description: "A fort in the Bandra area of Mumbai.",
+         img: "images/Mumbai/bandara.jpg"
+      },
+      "Rajabai Clock Tower": { 
+         description: "A historic clock tower in Mumbai.",
+         img: "images/Mumbai/clock.jpg"
+      },
+      "Aksa Beach": { 
+         description: "A serene beach in Mumbai.",
+         img: "images/Mumbai/aksh_beach.jpg"
+      },
+      "Juhu Beach": { 
+         description: "One of Mumbai's most popular beaches.",
+         img: "images/Mumbai/juhu.jpg"
+      },
+      "Deekshabhoomi": { 
+         description: "A Buddhist monument in Nagpur.",
+         img: "images/Nagpur/Deekshabhoomi.jpg"
+      },
+      "Pench Tiger Reserve": { 
+         description: "A wildlife reserve near Nagpur known for its tigers.",
+         img: "images/Nagpur/pench.jpg"
+      },
+      "Dragon Palace": { 
+         description: "A popular Chinese restaurant in Nagpur.",
+         img: "images/Nagpur/dragon.jpg"
+      },
+      "Shri Ganesh Mandir Tekdi": { 
+         description: "A temple in Nagpur dedicated to Lord Ganesh.",
+         img: "images/Nagpur/ganesh.jpg"
+      },
+      "Hazrat Baba Tajuddin Dargah": { 
+         description: "A revered dargah in Nagpur.",
+         img: "images/Nagpur/hazrat.jpg"
+      },
+      "Ramtek": { 
+         description: "A historic town near Nagpur.",
+         img: "images/Nagpur/ramtek.jpg"
+      },
+      "Fun N Food Village Nagpur": { 
+         description: "An amusement park in Nagpur perfect for families.",
+         img: "images/Nagpur/fun.jpg"
+      },
+      "Mahalaxmi Temple, Kolhapur": { 
+         description: "A renowned temple in Kolhapur.",
+         img: "images/Kolhapur/maha.jpg"
+      },
+      "Shahu Palace": { 
+         description: "A historical palace in Kolhapur.",
+         img: "images/Kolhapur/shau_palace.jpg"
+      },
+      "Rankala Lake": { 
+         description: "A scenic lake in Kolhapur popular for evening strolls.",
+         img: "images/Kolhapur/rankala.jpg"
+      },
+      "Sajja Kothi": { 
+         description: "A historical building in Kolhapur.",
+         img: "images/Kolhapur/sajja.jpg"
+      },
+      "Bhavani Mandap": { 
+         description: "A monument in Kolhapur.",
+         img: "images/Kolhapur/bhavani.jpg"
+      },
+      "Teen Darwaja": { 
+         description: "A famous gateway in Kolhapur.",
+         img: "images/Kolhapur/teen.jpg"
+      },
+      "Panhala Fort": { 
+         description: "A historic fort in Kolhapur.",
+         img: "images/Kolhapur/panhala.jpg"
+      },
+      "Shalini Palace": { 
+         description: "A palace in Kolhapur with cultural significance.",
+         img: "images/Kolhapur/shalini.jpg"
+      },
+      "Rautwadi Waterfall, Radhanagri": { 
+         description: "A beautiful waterfall near Kolhapur.",
+         img: "images/Kolhapur/rautwadi.jpg"
+      },
+      "Siddharth Garden": { 
+         description: "A well-maintained garden in Aurangabad.",
+         img: "images/Aurangabad/Siddharth.jpg"
+      },
+      "Ajanta Caves": { 
+         description: "Ancient rock-cut caves near Aurangabad famed for their paintings.",
+         img: "images/Aurangabad/ajanta.jpg"
+      },
+      "Bibi Ka Maqbara": { 
+         description: "A mausoleum in Aurangabad often called the 'Taj of the Deccan'.",
+         img: "images/Aurangabad/bibi.jpg"
+      },
+      "Panchakki": { 
+         description: "A historic water mill in Aurangabad.",
+         img: "images/Aurangabad/pan.jpg"
+      },
+      "Ellora Caves": { 
+         description: "Famous caves in Aurangabad with intricate carvings.",
+         img: "images/Aurangabad/Ellora.jpg"
+      },
+      "Mhaismal": { 
+         description: "A scenic hill station near Aurangabad.",
+         img: "images/Aurangabad/mhais.jpg"
+      },
+      "Dr. Babasaheb Ambedkar Marathwada University": { 
+         description: "A notable university in Aurangabad.",
+         img: "images/Aurangabad/university.jpg"
+      },
+      "Jayakwadi Dam": { 
+         description: "A dam near Aurangabad with scenic surroundings.",
+         img: "images/Aurangabad/jayakwadi.jpg"
+      },
+      "Sant Dynaneshwar Udyaan": { 
+         description: "A park in Aurangabad.",
+         img: "images/Aurangabad/dnyaneshwar_garden.jpg"
+      },
+      "Bhadra Maruti Temple": { 
+         description: "A temple in Aurangabad.",
+         img: "images/Aurangabad/bhadra.jpg"
+      },
+      "Daultabad Fort": { 
+         description: "A historic fort in Aurangabad.",
+         img: "images/Aurangabad/Daultabad.jpg"
+      },
+      "Soneri Mahal": { 
+         description: "A historical monument in Aurangabad.",
+         img: "images/Aurangabad/soneri.jpg"
+      },
+      "Dr. Salim Ali Lake": { 
+         description: "A lake in Aurangabad.",
+         img: "images/Aurangabad/salim.jpg"
+      },
+      "Pittalkhora Caves": { 
+         description: "Caves near Aurangabad known for their scenic beauty.",
+         img: "images/Aurangabad/pittal.jpg"
+      },
+      "Gautala Autramghat Sanctuary": { 
+         description: "A wildlife sanctuary near Aurangabad.",
+         img: "images/Aurangabad/gautala.jpg"
+      },
+      "Goga Baba Hill": { 
+         description: "A hill in Aurangabad popular with visitors.",
+         img: "images/Aurangabad/goga.jpg"
+      },
+      "Chhatrapati Shivaji Maharaj Museum": { 
+         description: "A museum in Aurangabad dedicated to the legacy of Shivaji Maharaj.",
+         img: "images/Aurangabad/musium.jpg"
+      },
+      "Aurangabad Caves": { 
+         description: "Historic caves in Aurangabad.",
+         img: "images/Aurangabad/caves.jpg"
+      },
+      "H2O Waterpark": { 
+         description: "A fun water park in Aurangabad.",
+         img: "images/Aurangabad/H2o.jpg"
+      },
+      "Bani Begum Garden": { 
+         description: "A public garden in Aurangabad.",
+         img: "images/Aurangabad/bani.jpg"
+      },
+      "Tomb of Mughal Emperor Aurangzeb Alamgir": { 
+         description: "The tomb of Emperor Aurangzeb in Aurangabad.",
+         img: "images/Aurangabad/tomb.jpg"
+      }
+    };
+
+    // Dummy nearby hotels data.
+    const nearbyHotels = {
+      "Lonavala": [
+        { name: "Hotel Sunshine", rating: "4★", price: "₹3500/night" },
+        { name: "Mountain View Hotel", rating: "3★", price: "₹2800/night" }
+      ],
+      "Mahabaleshwar": [
+        { name: "Strawberry Inn", rating: "3★", price: "₹2500/night" },
+        { name: "Hilltop Retreat", rating: "4★", price: "₹4000/night" }
+      ],
+      "Ajanta Caves": [
+        { name: "Heritage Lodge", rating: "4★", price: "₹3200/night" },
+        { name: "Cave View Lodge", rating: "3★", price: "₹2000/night" }
+      ],
+      "Shirdi": [
+        { name: "Sai Comfort Inn", rating: "3★", price: "₹2200/night" },
+        { name: "Shirdi Palace Hotel", rating: "4★", price: "₹3500/night" }
+      ]
+    };
+
+    // Dummy nearby restaurants data.
+    const nearbyRestaurants = {
+      "Lonavala": [
+        { name: "Waterfall Cafe", cuisine: "Local", price: "₹800" },
+        { name: "Hilltop Diner", cuisine: "Continental", price: "₹900" }
+      ],
+      "Mahabaleshwar": [
+        { name: "Viewpoint Diner", cuisine: "Local", price: "₹1000" },
+        { name: "Strawberry Cafe", cuisine: "Fusion", price: "₹1100" }
+      ],
+      "Ajanta Caves": [
+        { name: "Cave Side Cafe", cuisine: "Indian", price: "₹700" },
+        { name: "Heritage Restaurant", cuisine: "Mughlai", price: "₹800" }
+      ],
+      "Shirdi": [
+        { name: "Temple Cafe", cuisine: "South Indian", price: "₹600" },
+        { name: "Sai's Kitchen", cuisine: "North Indian", price: "₹750" }
+      ]
+    };
+
+    // Main function to load details, initialize the map, and populate nearby hotels & restaurants.
+    async function initPage() {
+      const placeParam = getQueryParam("place");
+      const placeNameEl = document.getElementById("placeName");
+      const placeDescriptionEl = document.getElementById("placeDescription");
+      const placePhotoEl = document.getElementById("placePhoto");
+      let coordinates = null;
+
+      if (placeParam) {
+        // Update title and description.
+        placeNameEl.textContent = placeParam;
+        if (placesDetails[placeParam]) {
+          placeDescriptionEl.textContent = placesDetails[placeParam].description;
+          // Set and display the photo if available.
+          if (placesDetails[placeParam].img) {
+            placePhotoEl.src = placesDetails[placeParam].img;
+            placePhotoEl.style.display = "block";
+            console.log("Displaying image:", placesDetails[placeParam].img);
+          } else {
+            console.log("No image URL for:", placeParam);
+          }
+        } else {
+          placeDescriptionEl.textContent = "No additional details available.";
+        }
+        // Fetch coordinates using geocoding.
+        coordinates = await getCoordinates(placeParam);
+        if (!coordinates) {
+          placeDescriptionEl.innerHTML += "<br/><span class='noData'>Could not fetch coordinates.</span>";
+          coordinates = { lat: 19.7515, lng: 75.7139 };
+        }
+      } else {
+        placeNameEl.textContent = "No Tourism Place Selected";
+        placeDescriptionEl.innerHTML = "<span class='noData'>Please provide a place name in the query string.</span>";
+        coordinates = { lat: 19.7515, lng: 75.7139 };
+      }
+
+      // Initialize the Leaflet map.
+      const map = L.map('map').setView([coordinates.lat, coordinates.lng], 10);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+      L.marker([coordinates.lat, coordinates.lng])
+        .addTo(map)
+        .bindPopup(`<b>${placeParam || "Tourism Place"}</b>`)
+        .openPopup();
+
+      // Populate Nearby Hotels.
+      const hotelsContainer = document.getElementById("hotelsContainer");
+      if (hotelsContainer) {
+        const hotelsData = nearbyHotels[placeParam] || [];
+        if (hotelsData.length > 0) {
+          hotelsContainer.innerHTML = "";
+          hotelsData.forEach(hotel => {
+            const div = document.createElement("div");
+            div.className = "nearby-item";
+            div.innerHTML = `
+              <h4>${hotel.name}</h4>
+              <p>Rating: ${hotel.rating}</p>
+              <p>Price: ${hotel.price}</p>
+            `;
+            hotelsContainer.appendChild(div);
+          });
+        } else {
+          hotelsContainer.innerHTML = "<p class='noData'>No nearby hotels data available.</p>";
+        }
+      }
+
+      // Populate Nearby Restaurants.
+      const restaurantsContainer = document.getElementById("restaurantsContainer");
+      if (restaurantsContainer) {
+        const restaurantsData = nearbyRestaurants[placeParam] || [];
+        if (restaurantsData.length > 0) {
+          restaurantsContainer.innerHTML = "";
+          restaurantsData.forEach(restaurant => {
+            const div = document.createElement("div");
+            div.className = "nearby-item";
+            div.innerHTML = `
+              <h4>${restaurant.name}</h4>
+              <p>Cuisine: ${restaurant.cuisine}</p>
+              <p>Avg. Price: ${restaurant.price}</p>
+            `;
+            restaurantsContainer.appendChild(div);
+          });
+        } else {
+          restaurantsContainer.innerHTML = "<p class='noData'>No nearby restaurants data available.</p>";
+        }
+      }
+    }
+
+    // Execute the main function once the page loads.
+    window.onload = initPage;
+  </script>
+</body>
+</html>
