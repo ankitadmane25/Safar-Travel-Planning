@@ -432,7 +432,7 @@ function getBotResponse(input) {
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
   import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-database.js";
 
-  const Config = {
+  const firebaseConfig = {
     apiKey: "AIzaSyA890SKxHYlOOCx5CZVrGjJwy_RvePD3Tc",
     authDomain: "safar-sign-up-and-login.firebaseapp.com",
     projectId: "safar-sign-up-and-login",
@@ -442,8 +442,8 @@ function getBotResponse(input) {
     measurementId: "G-EYY432MQJY"
   };
 
-  const a = initializeApp(Config);
-  const db = getDatabase(ap);
+  const app = initializeApp(firebaseConfig);
+  const database = getDatabase(app);
 
   window.submitFeedback = function () {
     const feedback = document.getElementById("feedback-text").value;
