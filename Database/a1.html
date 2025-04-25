@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Safar</title>
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .head {
+            background: linear-gradient(45deg, #d4953e, rgb(155, 107, 4), #da4804);
+            display: flex;
+            align-items: center;
+            padding: 15px 30px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo {
+            height: 60px;
+            width: 80px;
+            border-radius: 10px;
+        }
+
+        .title {
+            font-size: 2rem;
+            color: #fff;
+            margin-left: 20px;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 1.8rem;
+        }
+
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.4rem;
+        }
+
+        .card p {
+            margin: 10px 0;
+            color: #555;
+            font-size: 1rem;
+        }
+
+        .card .feedback {
+            font-style: italic;
+            color: #777;
+            font-size: 0.9rem;
+        }
+
+        .card .rating {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #ff9800;
+            font-weight: bold;
+        }
+
+        .card .rating span {
+            font-size: 1.2rem;
+        }
+
+        /* Loading Spinner */
+        .loading {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #555;
+            margin: 20px 0;
+        }
+
+        /* Search Bar */
+        .search-bar {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .search-bar input {
+            padding: 10px;
+            width: 300px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .search-bar input:focus {
+            border-color: #d4953e;
+            box-shadow: 0 0 5px rgba(212, 149, 62, 0.5);
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 10px;
+        }
+
+        .pagination button {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #fff;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .pagination button:hover {
+            background: #f4f4f4;
+        }
+
+        .pagination button.active {
+            background: #d4953e;
+            color: #fff;
+            border-color: #d4953e;
+        }
+    </style>
+</head>
+<body>
+    <div class="head">
+        <img src="logo.png" class="logo" alt="Logo">
+        <h1 class="title">Safar Admin Panel</h1>
+    </div>
+
+    <div class="container">
+        <h2>User Statistics</h2>
+        <div id="userStats" class="card-container">
+            <div class="loading">Loading user statistics...</div>
+        </div>
+
+        <h2>User Feedbacks</h2>
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Search by username or rating...">
+        </div>
+        <div id="userFeedbacks" class="card-container">
+            <div class="loading">Loading feedbacks...</div>
+        </div>
+        <div class="pagination" id="pagination">
+            <!-- Pagination buttons will be added dynamically -->
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA890SKxHYlOOCx5CZVrGjJwy_RvePD3Tc",
+            authDomain: "safar-sign-up-and-login.firebaseapp.com",
+            databaseURL: "https://safar-sign-up-and-login-default-rtdb.firebaseio.com",
+            projectId: "safar-sign-up-and-login",
+            storageBucket: "safar-sign-up-and-login.appspot.com",
+            messagingSenderId: "340257717905",
+            appId: "1:340257717905:web:aaa7ea659e1bb1a4f40930",
+            measurementId: "G-EYY432MQJY"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Get elements
+        const userStatsContainer = document.getElementById('userStats');
+        const userFeedbacksContainer = document.getElementById('userFeedbacks');
+        const searchInput = document.getElementById('searchInput');
+        const paginationContainer = document.getElementById('pagination');
+
+        // Database references
+        const usersRef = ref(database, 'users');
+        const feedbacksRef = ref(database, 'feedbacks');
+
+        // Store feedbacks for filtering and pagination
+        let allFeedbacks = [];
+        const itemsPerPage = 6;
+        let currentPage = 1;
+
+        // ✅ Fetch All Signed-Up Users
+        onValue(usersRef, (snapshot) => {
+            console.log("Fetching users...");
+            const userData = snapshot.val() || {};
+            console.log("User Data:", userData);
+
+            userStatsContainer.innerHTML = ''; // Clear loading message
+
+            if (userData) {
+                const totalUsers = Object.keys(userData).length;
+
+                let userListHTML = `
+                    <div class="card">
+                        <h3>Total Users</h3>
+                        <p>${totalUsers} users have signed up.</p>
+                    </div>
+                `;
+
+                // Loop through users and show names
+                Object.values(userData).forEach(user => {
+                    userListHTML += `
+                        <div class="card">
+                            <h3>${user.name || "Unknown User"}</h3>
+                        </div>
+                    `;
+                });
+
+                userStatsContainer.innerHTML = userListHTML;
+            } else {
+                userStatsContainer.innerHTML = '<p>No users found.</p>';
+            }
+        }, (error) => {
+            console.error("Error fetching users:", error);
+        });
+
+        // ✅ Fetch User Feedbacks
+        onValue(feedbacksRef, (snapshot) => {
+            console.log("Fetching feedbacks...");
+            const feedbacks = snapshot.val() || {};
+            console.log("Feedbacks Data:", feedbacks);
+
+            allFeedbacks = Object.entries(feedbacks).map(([key, feedback]) => ({
+                key,
+                ...feedback
+            }));
+
+            renderFeedbacks(allFeedbacks);
+            setupPagination(allFeedbacks.length);
+        }, (error) => {
+            console.error("Error fetching feedbacks:", error);
+        });
+
+        // Render feedbacks
+        function renderFeedbacks(feedbacks) {
+            userFeedbacksContainer.innerHTML = ''; // Clear loading message
+
+            if (feedbacks.length > 0) {
+                feedbacks.forEach(feedback => {
+                    const feedbackCard = document.createElement('div');
+                    feedbackCard.className = 'card';
+                    feedbackCard.innerHTML = `
+                        <h3>${feedback.username || "Unknown User"}</h3>
+                        <p class="feedback">"${feedback.feedback || "No feedback provided"}"</p>
+                        <p class="rating">Rating: <span>${feedback.rating || "No rating"} ⭐</span></p>
+                    `;
+                    userFeedbacksContainer.appendChild(feedbackCard);
+                });
+            } else {
+                userFeedbacksContainer.innerHTML = '<p>No feedbacks available.</p>';
+            }
+        }
+
+        // Setup pagination
+        function setupPagination(totalItems) {
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            paginationContainer.innerHTML = '';
+
+            for (let i = 1; i <= totalPages; i++) {
+                const button = document.createElement('button');
+                button.textContent = i;
+                button.addEventListener('click', () => {
+                    currentPage = i;
+                    updateFeedbacks();
+                });
+                paginationContainer.appendChild(button);
+            }
+
+            updateFeedbacks();
+        }
+
+        // Update feedbacks based on current page
+        function updateFeedbacks() {
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const paginatedFeedbacks = allFeedbacks.slice(start, end);
+            renderFeedbacks(paginatedFeedbacks);
+
+            // Highlight active page button
+            const buttons = paginationContainer.querySelectorAll('button');
+            buttons.forEach((button, index) => {
+                button.classList.toggle('active', index + 1 === currentPage);
+            });
+        }
+
+        // Search functionality
+        searchInput.addEventListener('input', () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const filteredFeedbacks = allFeedbacks.filter(feedback =>
+                feedback.username.toLowerCase().includes(searchTerm) ||
+                feedback.rating.toString().includes(searchTerm)
+            );
+            renderFeedbacks(filteredFeedbacks);
+        });
+    </script>
+</body>
+</html>

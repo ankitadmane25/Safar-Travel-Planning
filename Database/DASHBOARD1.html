@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Dashboard - Safar</title>
+  <style>
+    /* Add your existing CSS styles here */
+    .head {
+      background: linear-gradient(45deg, #d4953e, rgb(155, 107, 4), #da4804);
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+    }
+    .logo-title-container {
+      display: flex;
+      align-items:
+       center;
+    }
+    .title {
+      font-size: 2.5rem;
+      color: rgba(227, 225, 225, 0.842);
+      margin-left: 20px;
+    }
+    body {
+      font-family: Arial, sans-serif;s
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: #cdc3b2;
+    }
+    .dashboard-container {
+      display: flex;
+      height: calc(100vh - 100px);
+    }
+    .sidebar {
+      width: 280px;
+      height: 100%;
+      background:  #ddb44e;
+      color: white;
+      padding: 2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s ease;
+    }
+    .sidebar.hidden {
+      transform: translateX(-100%);
+      position: absolute;
+      top: 100px;
+      left: 0;
+      height: calc(100vh - 100px);
+      z-index: 10;
+    }
+    .sidebar h2 {
+      margin-bottom: 2rem;
+      text-align: center;
+      font-size: 1.5rem;
+    }
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .sidebar li {
+      margin-bottom: 1rem;
+    }
+    .sidebar a {
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      transition: background 0.3s;
+      display: block;
+    }
+    .sidebar a:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+    .content {
+      flex: 1;
+      padding: 30px;
+    }
+    .card {
+      background: white;
+      padding: 30px;
+      margin-bottom: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      display: none;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    #feedback-text {
+      width: 100%;
+      height: 150px; /* Increased height */
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    .rating {
+      display: flex;
+      flex-direction: row-reverse;
+      justify-content: center;
+    }
+    .rating input {
+      display: none;
+    }
+    .rating label {
+      font-size: 30px;
+      color: gray;
+      cursor: pointer;
+      padding: 5px;
+    }
+    .rating input:checked ~ label,
+    .rating label:hover,
+    .rating label:hover ~ label {
+      color: gold;
+    }
+    .profile-pic {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      display: block;
+      margin: 20px auto;
+      cursor: pointer;
+    }
+    .hidden-input {
+      display: none;
+    }
+    .remove-btn {
+      display: block;
+      margin: 10px auto;
+      background-color: rgb(255, 0, 0);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      cursor: pointer;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    #chatbot-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .btn{
+      padding: 10px;
+      border-radius: 10px;
+      width: 100px;
+      background-color: bisque;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    .btn:hover {
+      background-color: #d4953e;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    #chatbot-box {
+      width: 100%;
+      max-width: 500px;
+      height: 300px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      overflow-y: auto;
+      background: white;
+      border-radius: 10px;
+    }
+    #chatbot-input {
+      width: 100%;
+      max-width: 500px;
+      padding: 10px;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .active {
+      display: block;
+    }
+  </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA890SKxHYlOOCx5CZVrGjJwy_RvePD3Tc",
+  authDomain: "safar-sign-up-and-login.firebaseapp.com",
+  projectId: "safar-sign-up-and-login",
+  storageBucket: "safar-sign-up-and-login.appspot.com",
+  messagingSenderId: "340257717905",
+  appId: "1:340257717905:web:aaa7ea659e1bb1a4f40930",
+  measurementId: "G-EYY432MQJY"
+};
+
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const username = sessionStorage.getItem("loggedInUser");
+
+  if (!username) {
+    alert("No user logged in. Redirecting to login page...");
+    window.location.href = "loginfinal.html";
+    return;
+  }
+
+  try {
+    const userRef = ref(database, "users/" + username.replace(".", "_"));
+    const snapshot = await get(userRef);
+
+    if (snapshot.exists()) {
+      const userData = snapshot.val();
+      displayUserData(userData);
+    } else {
+      alert("User data not found.");
+    }
+  } catch (error) {
+    alert("Error fetching user data: " + error.message);
+  }
+});
+
+function displayUserData(userData) {
+  // Display username
+  document.getElementById("username").innerText = userData.username;
+
+  // Display date of birth (if available)
+  if (userData.dob) {
+    document.getElementById("dob").innerText = userData.dob;
+  }
+
+  // Display gender (if available)
+  if (userData.gender) {
+    document.getElementById("gender").innerText = userData.gender;
+  }
+
+  // Display profile picture (if available)
+  // if (userData.profilePicture) {
+  //   document.getElementById("profile-pic").src = userData.profilePicture;
+  // }
+}
+
+// async function updateProfilePic(event) {
+//   const file = event.target.files[0];
+//   if (file) {
+//     const username = sessionStorage.getItem("loggedInUser");
+//     const userRef = ref(database, "users/" + username.replace(".", "_"));
+
+//     // Convert the file to a data URL
+//     const reader = new FileReader();
+//     reader.onload = async (e) => {
+//       const profilePictureUrl = e.target.result;
+
+//       try {
+//         // Save the profile picture URL to Firebase
+//         await set(ref(database, `users/${username.replace(".", "_")}/profilePicture`), profilePictureUrl);
+
+//         // Update the profile picture on the dashboard
+//         document.getElementById("profile-pic").src = profilePictureUrl;
+//         alert("Profile picture updated successfully!");
+//       } catch (error) {
+//         alert("Error updating profile picture: " + error.message);
+//       }
+//     };
+//     reader.readAsDataURL(file);
+//   } else {
+//     alert("No file selected.");
+//   }
+// }
+
+// async function removeProfilePic() {
+//   const username = sessionStorage.getItem("loggedInUser");
+//   const userRef = ref(database, "users/" + username.replace(".", "_"));
+
+//   try {
+//     // Remove the profile picture URL from Firebase
+//     await remove(ref(database, `users/${username.replace(".", "_")}/profilePicture`));
+
+//     // Reset the profile picture to a default image
+//     document.getElementById("profile-pic").src = "profile.jpg"; // Default image
+//     alert("Profile picture removed successfully!");
+//   } catch (error) {
+//     alert("Error removing profile picture: " + error.message);
+//   }
+// }
+
+function showSection(sectionId) {
+  // Hide all sections
+  document.querySelectorAll(".card").forEach((section) => {
+    section.style.display = "none";
+  });
+
+  // Show the selected section
+  document.getElementById(sectionId).style.display = "block";
+}
+
+
+// Add event listeners for sidebar links
+document.querySelectorAll(".sidebar ul li a").forEach((link) => {
+  link.addEventListener("click", (e) => {
+    e.preventDefault();
+    const sectionId = link.getAttribute("onclick").replace("showSection('", "").replace("')", "");
+    showSection(sectionId);
+  });
+ });
+ 
+  </script>
+</head>
+<body>
+
+  <div class="dashboard-container">
+    <aside class="sidebar">
+      <div class="logo-title-container">
+        <img src="logo.png" class="logo" alt="Logo" height="80px" width="100px" />
+        <h1 class="title">Safar</h1>
+      </div>
+      <ul>
+        <li><a onclick="showSection('profile')">Profile</a></li>
+        <!-- <li><a onclick="showSection('saved-trips')">Saved Trips</a></li> -->
+        <li><a onclick="showSection('feedback')">customer feedback</a></li>
+        <li><a onclick="showSection('recommendations')">Recommendations</a></li>
+        <li><a onclick="showSection('chatbot')">Chatbot</a></li>
+        <li><a href="#" onclick="logout()">Logout</a></li>
+      </ul>
+    </aside>
+
+    <main class="content">
+      <section id="profile" class="card active">
+        <h3>Profile</h3>
+        <input type="file" id="file-input" class="hidden-input" accept="image/*" onchange="updateProfilePic(event)">
+        <img src="profile.jpg" alt="User Profile"  class="profile-pic" onclick="document.getElementById('file-input').click()">
+        <!-- <button class="remove-btn" onclick="removeProfilePic()">Remove Image</button> -->
+        <p>Username: <span id="username"></span></p>
+        <p>Date of Birth: <span id="dob"></span></p>
+        <p>Gender: <span id="gender"></span></p> <!-- Gender field added -->
+        <a href="../main.html"><button class="btn">Search Trip</button></a>
+      </section>  
+
+      <section id="feedback" class="card">
+        <h3>Customer Feedback</h3>
+        <textarea id="feedback-text" placeholder="Write your feedback here..."></textarea>
+        <br>
+        
+        <!-- Star Rating -->
+        <label>Rate Us:</label>
+        <div class="rating">
+          <input type="radio" id="star5" name="rating" value="5"><label for="star5">★</label>
+          <input type="radio" id="star4" name="rating" value="4"><label for="star4">★</label>
+          <input type="radio" id="star3" name="rating" value="3"><label for="star3">★</label>
+          <input type="radio" id="star2" name="rating" value="2"><label for="star2">★</label>
+          <input type="radio" id="star1" name="rating" value="1"><label for="star1">★</label>
+        </div>
+        
+        <button class="btn" onclick="submitFeedback()">Submit</button>
+      </section>
+
+      <section id="recommendations" class="card">
+        <h3>Recommended Destinations</h3>
+        <p>Explore these amazing places based on your interests!</p>
+        <ul id="recommendation-list">
+          <li>Ajanta Caves</li>
+          <li>Lonavala</li>
+          <li>Bhandardara</li>
+          <li>Singhgad</li>
+          <li>Ajanta Fort</li>
+        </ul>
+      </section>
+
+      <section id="chatbot" class="card">
+        <h3>Chatbot Assistance</h3>
+        <div id="chatbot-box"></div>
+        <input type="text" id="chatbot-input" placeholder="Ask about Safar..." onkeypress="if(event.key === 'Enter') sendMessage()">
+      </section>
+    </main>
+  </div>
+<script>
+  function sendMessage() {
+  const inputField = document.getElementById("chatbot-input");
+  const chatbox = document.getElementById("chatbot-box");
+  const userMessage = inputField.value.trim();
+  
+  if (userMessage === "") return;
+  
+  // Display user message
+  const userDiv = document.createElement("div");
+  userDiv.style.textAlign = "right";
+  userDiv.style.margin = "10px 0";
+  userDiv.style.padding = "8px";
+  userDiv.style.background = "#d4953e";
+  userDiv.style.color = "white";
+  userDiv.style.borderRadius = "10px";
+  userDiv.textContent = "You: " + userMessage;
+  chatbox.appendChild(userDiv);
+  
+  inputField.value = "";
+  chatbox.scrollTop = chatbox.scrollHeight;
+
+  // Process bot response
+  setTimeout(() => {
+    const botResponse = getBotResponse(userMessage);
+    const botDiv = document.createElement("div");
+    botDiv.style.textAlign = "left";
+    botDiv.style.margin = "10px 0";
+    botDiv.style.padding = "8px";
+    botDiv.style.background = "#ccc";
+    botDiv.style.color = "black";
+    botDiv.style.borderRadius = "10px";
+    botDiv.textContent = "Topu: " + botResponse;
+    chatbox.appendChild(botDiv);
+    chatbox.scrollTop = chatbox.scrollHeight;
+  }, 1000);
+}
+
+function getBotResponse(input) {
+  input = input.toLowerCase();
+
+  // ========= Existing Commands =========
+  if (input.includes("hello") || input.includes("hi")) {
+    return "Hello! I am Topu. How can I assist you with your travel plans?";
+  } else if (input.includes("recommend")) {
+    return "I recommend visiting Lonavala, Mahabaleshwar, or Ajanta Caves!";
+  } else if (input.includes("budget trip") || input.includes("low cost trip")) {
+    return "For a budget trip, consider visiting Sinhagad Fort, Panchgani, or Bhandardara. Public transport and local food can help save costs!";
+  } else if (input.includes("adventure") || input.includes("trekking")) {
+    return "If you love adventure, you should visit Rajmachi Fort, Harishchandragad, or Kalsubai Peak!";
+  } else if (input.includes("beach") || input.includes("coastal")) {
+    return "For beautiful beaches, try Alibaug, Ganpatipule, or Tarkarli!";
+  } else if (input.includes("historical places")) {
+    return "For history lovers, I suggest Ajanta Caves, Ellora Caves, and Raigad Fort.";
+  } else if (input.includes("wildlife") || input.includes("forest")) {
+    return "You might enjoy visiting Tadoba National Park, Pench National Park, or Bhimashankar Wildlife Sanctuary.";
+  } else if (input.includes("family trip") || input.includes("kids friendly")) {
+    return "For a family-friendly trip, try Mahabaleshwar, Lonavala, or Imagica Theme Park!";
+  } else if (input.includes("honeymoon") || input.includes("romantic place")) {
+    return "For a romantic getaway, I recommend Lavasa, Matheran, or Mulshi Lake.";
+  } else if (input.includes("travel tips")) {
+    return "Always carry water, check the weather forecast, and book accommodations in advance!";
+  } else if (input.includes("best season") || input.includes("best time")) {
+    return "For hill stations, visit in monsoon or winter (June-Feb). Beaches are best in winter (Nov-Feb).";
+  } else if (input.includes("cost") || input.includes("budget estimate")) {
+    return "The estimated cost depends on your destination. Budget trips range from ₹2000-₹5000 per person, while premium trips can go ₹10,000+ per person.";
+  } else if (input.includes("transport") || input.includes("how to reach")) {
+    return "You can travel via train, bus, or car. Major destinations have railway connectivity, while remote places may need private transport.";
+  } else if (input.includes("stay") || input.includes("accommodation")) {
+    return "You can choose from budget hotels, homestays, and luxury resorts. For a budget stay, try government guesthouses or hostels.";
+  } else if (input.includes("plan my trip") || input.includes("custom travel plan")) {
+    return "Tell me your preferences (budget, adventure, beaches, etc.), and I will suggest a customized plan!";
+  } else if (input.includes("food") || input.includes("local cuisine")) {
+    return "Maharashtra offers delicious food! Try Misal Pav in Pune, Malvani seafood in Konkan, or Vada Pav in Mumbai.";
+  } else if (input.includes("festivals") || input.includes("events")) {
+    return "You can enjoy Ganesh Chaturthi in Mumbai, Ellora Festival in Aurangabad, and the Strawberry Festival in Mahabaleshwar!";
+  } else if (input.includes("shopping") || input.includes("souvenirs")) {
+    return "For shopping, try Kolhapuri chappals, Paithani sarees, and Warli paintings. Mumbai’s Colaba Market is great for street shopping!";
+  } else if (input.includes("weather")) {
+    return "Weather varies by location! Hill stations are cool in winter, while summers can be hot. Always check the forecast before traveling.";
+  } else if (input.includes("solo travel")) {
+    return "For solo travel, Pune, Nashik, and Alibaug are great safe options! Always keep emergency contacts handy.";
+  } else if (input.includes("cultural places") || input.includes("heritage")) {
+    return "Explore Maharashtra’s rich heritage at Shaniwar Wada, Elephanta Caves, and Pratapgad Fort!";
+  } else if (input.includes("emergency") || input.includes("help number")) {
+    return "For any emergency, dial 112 (Police), 102 (Ambulance), or visit the nearest hospital.";
+  } else if (input.includes("nightlife") || input.includes("clubs")) {
+    return "For a vibrant nightlife, check out Mumbai’s Marine Drive, Pune’s Koregaon Park, or Lonavala’s camping spots!";
+  } else if (input.includes("eco-tourism") || input.includes("nature retreat")) {
+    return "For nature lovers, visit Amboli, Kaas Plateau, or Bhimashankar Wildlife Sanctuary!";
+  } else if (input.includes("road trip")) {
+    return "Try the Mumbai-Goa Coastal Highway or Pune to Lavasa road trip for an amazing experience!";
+  } else if (input.includes("photography")) {
+    return "For breathtaking photography, visit Khandala’s Sunset Point, the Ajanta Caves, or the beaches of Ratnagiri!";
+  } else if (input.includes("luxury trip") || input.includes("five star stay")) {
+    return "For a luxury experience, book resorts in Lonavala, stay at Taj Hotel Mumbai, or experience houseboats in Tarkarli!";
+  } else if (input.includes("weekend trip") || input.includes("quick getaway")) {
+    return "For a weekend trip, try Lonavala-Khandala, Matheran, or Mahabaleshwar!";
+  } else if (input.includes("marathi phrases") || input.includes("local language")) {
+    return "Here are some basic Marathi phrases:\n- Hello: नमस्कार (Namaskar)\n- Thank You: धन्यवाद (Dhanyawad)\n- How much is this?: हे कितीला आहे? (He kitila aahe?)\n- Where is this place?: हे ठिकाण कुठे आहे? (He thikan kuthe aahe?)";
+  }
+
+  // ========= New District-Specific Commands (Minimum 108 Commands) =========
+  // Each district gets three commands: directions, attractions, and hotels/accommodation.
+
+  // Ahmednagar
+  else if (input.includes("ahmednagar directions")) {
+    return "For directions to Ahmednagar, click here: <a href='https://www.google.com/maps/search/Ahmednagar' target='_blank'>Google Maps</a>";
+  } else if (input.includes("ahmednagar attractions")) {
+    return "Top attractions in Ahmednagar include the Ahmednagar Fort, Bheema's Cave, and historical monuments.";
+  } else if (input.includes("ahmednagar hotels") || input.includes("ahmednagar accommodation")) {
+    return "In Ahmednagar, you can find budget hotels and guesthouses near the city center.";
+  }
+
+  // Akola
+  else if (input.includes("akola directions")) {
+    return "For directions to Akola, click here: <a href='https://www.google.com/maps/search/Akola' target='_blank'>Google Maps</a>";
+  } else if (input.includes("akola attractions")) {
+    return "Must-see attractions in Akola include local temples, parks, and historical sites.";
+  } else if (input.includes("akola hotels") || input.includes("akola accommodation")) {
+    return "For accommodation in Akola, consider local guesthouses and mid-range hotels.";
+  }
+
+  // Amravati
+  else if (input.includes("amravati directions")) {
+    return "For directions to Amravati, click here: <a href='https://www.google.com/maps/search/Amravati' target='_blank'>Google Maps</a>";
+  } else if (input.includes("amravati attractions")) {
+    return "In Amravati, check out religious sites, cultural centers, and scenic parks.";
+  } else if (input.includes("amravati hotels") || input.includes("amravati accommodation")) {
+    return "For hotels in Amravati, there are several affordable options and local stays.";
+  }
+
+  // Aurangabad
+  else if (input.includes("aurangabad directions")) {
+    return "For directions to Aurangabad, click here: <a href='https://www.google.com/maps/search/Aurangabad' target='_blank'>Google Maps</a>";
+  } else if (input.includes("aurangabad attractions")) {
+    return "Aurangabad is famous for the Ajanta and Ellora Caves, Bibi Ka Maqbara, and historical monuments.";
+  } else if (input.includes("aurangabad hotels") || input.includes("aurangabad accommodation")) {
+    return "For accommodation in Aurangabad, you can choose from luxury hotels to budget guesthouses.";
+  }
+
+  // Beed
+  else if (input.includes("beed directions")) {
+    return "For directions to Beed, click here: <a href='https://www.google.com/maps/search/Beed' target='_blank'>Google Maps</a>";
+  } else if (input.includes("beed attractions")) {
+    return "In Beed, explore ancient forts, local temples, and scenic rural landscapes.";
+  } else if (input.includes("beed hotels") || input.includes("beed accommodation")) {
+    return "For accommodation in Beed, there are several local hotels and homestays available.";
+  }
+
+  // Bhandara
+  else if (input.includes("bhandara directions")) {
+    return "For directions to Bhandara, click here: <a href='https://www.google.com/maps/search/Bhandara' target='_blank'>Google Maps</a>";
+  } else if (input.includes("bhandara attractions")) {
+    return "Bhandara offers attractions like beautiful lakes, temples, and peaceful rural settings.";
+  } else if (input.includes("bhandara hotels") || input.includes("bhandara accommodation")) {
+    return "In Bhandara, you can find budget-friendly hotels and local guesthouses.";
+  }
+
+  // Buldhana
+  else if (input.includes("buldhana directions")) {
+    return "For directions to Buldhana, click here: <a href='https://www.google.com/maps/search/Buldhana' target='_blank'>Google Maps</a>";
+  } else if (input.includes("buldhana attractions")) {
+    return "Explore Buldhana’s historical sites, ancient temples, and natural scenery.";
+  } else if (input.includes("buldhana hotels") || input.includes("buldhana accommodation")) {
+    return "For accommodation in Buldhana, there are several budget hotels and local stays.";
+  }
+
+  // Chandrapur
+  else if (input.includes("chandrapur directions")) {
+    return "For directions to Chandrapur, click here: <a href='https://www.google.com/maps/search/Chandrapur' target='_blank'>Google Maps</a>";
+  } else if (input.includes("chandrapur attractions")) {
+    return "Chandrapur is known for its ancient caves, wildlife reserves, and cultural landmarks.";
+  } else if (input.includes("chandrapur hotels") || input.includes("chandrapur accommodation")) {
+    return "For accommodation in Chandrapur, explore budget hotels and local lodges.";
+  }
+
+  // Dhule
+  else if (input.includes("dhule directions")) {
+    return "For directions to Dhule, click here: <a href='https://www.google.com/maps/search/Dhule' target='_blank'>Google Maps</a>";
+  } else if (input.includes("dhule attractions")) {
+    return "Dhule offers attractions such as ancient forts, local markets, and cultural sites.";
+  } else if (input.includes("dhule hotels") || input.includes("dhule accommodation")) {
+    return "For hotels in Dhule, consider budget-friendly options and local guesthouses.";
+  }
+
+  // Gadchiroli
+  else if (input.includes("gadchiroli directions")) {
+    return "For directions to Gadchiroli, click here: <a href='https://www.google.com/maps/search/Gadchiroli' target='_blank'>Google Maps</a>";
+  } else if (input.includes("gadchiroli attractions")) {
+    return "In Gadchiroli, enjoy nature, forests, and offbeat rural attractions.";
+  } else if (input.includes("gadchiroli hotels") || input.includes("gadchiroli accommodation")) {
+    return "For accommodation in Gadchiroli, look for local homestays and budget hotels.";
+  }
+
+  // Gondia
+  else if (input.includes("gondia directions")) {
+    return "For directions to Gondia, click here: <a href='https://www.google.com/maps/search/Gondia' target='_blank'>Google Maps</a>";
+  } else if (input.includes("gondia attractions")) {
+    return "Gondia features scenic landscapes, temples, and cultural attractions.";
+  } else if (input.includes("gondia hotels") || input.includes("gondia accommodation")) {
+    return "For hotels in Gondia, you can find a range of options from budget stays to mid-range hotels.";
+  }
+
+  // Hingoli
+  else if (input.includes("hingoli directions")) {
+    return "For directions to Hingoli, click here: <a href='https://www.google.com/maps/search/Hingoli' target='_blank'>Google Maps</a>";
+  } else if (input.includes("hingoli attractions")) {
+    return "Hingoli offers local temples, scenic spots, and a glimpse of rural Maharashtra.";
+  } else if (input.includes("hingoli hotels") || input.includes("hingoli accommodation")) {
+    return "For accommodation in Hingoli, explore local guesthouses and budget hotels.";
+  }
+
+  // Jalgaon
+  else if (input.includes("jalgaon directions")) {
+    return "For directions to Jalgaon, click here: <a href='https://www.google.com/maps/search/Jalgaon' target='_blank'>Google Maps</a>";
+  } else if (input.includes("jalgaon attractions")) {
+    return "Jalgaon is known for its agricultural heritage, temples, and local fairs.";
+  } else if (input.includes("jalgaon hotels") || input.includes("jalgaon accommodation")) {
+    return "For hotels in Jalgaon, you can find budget-friendly options and local stays.";
+  }
+
+  // Jalna
+  else if (input.includes("jalna directions")) {
+    return "For directions to Jalna, click here: <a href='https://www.google.com/maps/search/Jalna' target='_blank'>Google Maps</a>";
+  } else if (input.includes("jalna attractions")) {
+    return "In Jalna, explore historical sites, ancient temples, and cultural landmarks.";
+  } else if (input.includes("jalna hotels") || input.includes("jalna accommodation")) {
+    return "For accommodation in Jalna, consider budget hotels and guesthouses in the area.";
+  }
+
+  // Kolhapur
+  else if (input.includes("kolhapur directions")) {
+    return "For directions to Kolhapur, click here: <a href='https://www.google.com/maps/search/Kolhapur' target='_blank'>Google Maps</a>";
+  } else if (input.includes("kolhapur attractions")) {
+    return "Kolhapur is famous for the Mahalaxmi Temple, New Palace, and local markets.";
+  } else if (input.includes("kolhapur hotels") || input.includes("kolhapur accommodation")) {
+    return "For hotels in Kolhapur, you can choose from luxury resorts to budget guesthouses.";
+  }
+
+  // Latur
+  else if (input.includes("latur directions")) {
+    return "For directions to Latur, click here: <a href='https://www.google.com/maps/search/Latur' target='_blank'>Google Maps</a>";
+  } else if (input.includes("latur attractions")) {
+    return "Latur offers historical sites, local temples, and cultural spots.";
+  } else if (input.includes("latur hotels") || input.includes("latur accommodation")) {
+    return "For accommodation in Latur, explore budget hotels and local guesthouses.";
+  }
+
+  // Mumbai
+  else if (input.includes("mumbai directions")) {
+    return "For directions to Mumbai, click here: <a href='https://www.google.com/maps/search/Mumbai' target='_blank'>Google Maps</a>";
+  } else if (input.includes("mumbai attractions")) {
+    return "Mumbai offers attractions like the Gateway of India, Marine Drive, and vibrant markets.";
+  } else if (input.includes("mumbai hotels") || input.includes("mumbai accommodation")) {
+    return "Mumbai has a range of accommodations from luxury hotels to budget hostels.";
+  }
+
+  // Nagpur
+  else if (input.includes("nagpur directions")) {
+    return "For directions to Nagpur, click here: <a href='https://www.google.com/maps/search/Nagpur' target='_blank'>Google Maps</a>";
+  } else if (input.includes("nagpur attractions")) {
+    return "Nagpur is known for its oranges, Deekshabhoomi, and beautiful parks.";
+  } else if (input.includes("nagpur hotels") || input.includes("nagpur accommodation")) {
+    return "For accommodation in Nagpur, consider mid-range hotels and local guesthouses.";
+  }
+
+  // Nanded
+  else if (input.includes("nanded directions")) {
+    return "For directions to Nanded, click here: <a href='https://www.google.com/maps/search/Nanded' target='_blank'>Google Maps</a>";
+  } else if (input.includes("nanded attractions")) {
+    return "Nanded is famous for its religious sites like the Hazur Sahib and historical landmarks.";
+  } else if (input.includes("nanded hotels") || input.includes("nanded accommodation")) {
+    return "For hotels in Nanded, there are budget and mid-range options available.";
+  }
+
+  // Nandurbar
+  else if (input.includes("nandurbar directions")) {
+    return "For directions to Nandurbar, click here: <a href='https://www.google.com/maps/search/Nandurbar' target='_blank'>Google Maps</a>";
+  } else if (input.includes("nandurbar attractions")) {
+    return "In Nandurbar, enjoy rural landscapes, local culture, and natural beauty.";
+  } else if (input.includes("nandurbar hotels") || input.includes("nandurbar accommodation")) {
+    return "For accommodation in Nandurbar, look for local guesthouses and budget hotels.";
+  }
+
+  // Nashik
+  else if (input.includes("nashik directions")) {
+    return "For directions to Nashik, click here: <a href='https://www.google.com/maps/search/Nashik' target='_blank'>Google Maps</a>";
+  } else if (input.includes("nashik attractions")) {
+    return "Nashik is known for its vineyards, Trimbakeshwar temple, and the Godavari river.";
+  } else if (input.includes("nashik hotels") || input.includes("nashik accommodation")) {
+    return "For hotels in Nashik, you can choose from luxury resorts to budget hotels.";
+  }
+
+  // Osmanabad
+  else if (input.includes("osmanabad directions")) {
+    return "For directions to Osmanabad, click here: <a href='https://www.google.com/maps/search/Osmanabad' target='_blank'>Google Maps</a>";
+  } else if (input.includes("osmanabad attractions")) {
+    return "Osmanabad offers historical sites, ancient temples, and scenic spots.";
+  } else if (input.includes("osmanabad hotels") || input.includes("osmanabad accommodation")) {
+    return "For accommodation in Osmanabad, consider budget guesthouses and local hotels.";
+  }
+
+  // Palghar
+  else if (input.includes("palghar directions")) {
+    return "For directions to Palghar, click here: <a href='https://www.google.com/maps/search/Palghar' target='_blank'>Google Maps</a>";
+  } else if (input.includes("palghar attractions")) {
+    return "Palghar features beaches, coastal views, and nature reserves.";
+  } else if (input.includes("palghar hotels") || input.includes("palghar accommodation")) {
+    return "For hotels in Palghar, you can find budget resorts and local guesthouses.";
+  }
+
+  // Parbhani
+  else if (input.includes("parbhani directions")) {
+    return "For directions to Parbhani, click here: <a href='https://www.google.com/maps/search/Parbhani' target='_blank'>Google Maps</a>";
+  } else if (input.includes("parbhani attractions")) {
+    return "Parbhani offers historical landmarks, local temples, and cultural experiences.";
+  } else if (input.includes("parbhani hotels") || input.includes("parbhani accommodation")) {
+    return "For accommodation in Parbhani, consider budget hotels and local guesthouses.";
+  }
+
+  // Pune
+  else if (input.includes("pune directions")) {
+    return "For directions to Pune, click here: <a href='https://www.google.com/maps/search/Pune' target='_blank'>Google Maps</a>";
+  } else if (input.includes("pune attractions")) {
+    return "Pune is known for its cultural heritage, Shaniwar Wada, and modern urban attractions.";
+  } else if (input.includes("pune hotels") || input.includes("pune accommodation")) {
+    return "In Pune, you can choose from luxury hotels, boutique stays, or budget hostels.";
+  }
+
+  // Raigad
+  else if (input.includes("raigad directions")) {
+    return "For directions to Raigad, click here: <a href='https://www.google.com/maps/search/Raigad' target='_blank'>Google Maps</a>";
+  } else if (input.includes("raigad attractions")) {
+    return "Raigad is famous for its fort, historical sites, and natural beauty.";
+  } else if (input.includes("raigad hotels") || input.includes("raigad accommodation")) {
+    return "For accommodation in Raigad, explore local resorts and budget hotels.";
+  }
+
+  // Ratnagiri
+  else if (input.includes("ratnagiri directions")) {
+    return "For directions to Ratnagiri, click here: <a href='https://www.google.com/maps/search/Ratnagiri' target='_blank'>Google Maps</a>";
+  } else if (input.includes("ratnagiri attractions")) {
+    return "Ratnagiri offers beautiful beaches, historical forts, and coastal cuisine.";
+  } else if (input.includes("ratnagiri hotels") || input.includes("ratnagiri accommodation")) {
+    return "For accommodation in Ratnagiri, you can find budget resorts and homestays near the beach.";
+  }
+
+  // Sangli
+  else if (input.includes("sangli directions")) {
+    return "For directions to Sangli, click here: <a href='https://www.google.com/maps/search/Sangli' target='_blank'>Google Maps</a>";
+  } else if (input.includes("sangli attractions")) {
+    return "In Sangli, enjoy historical sites, local markets, and scenic river views.";
+  } else if (input.includes("sangli hotels") || input.includes("sangli accommodation")) {
+    return "For hotels in Sangli, consider local guesthouses and budget-friendly options.";
+  }
+
+  // Satara
+  else if (input.includes("satara directions")) {
+    return "For directions to Satara, click here: <a href='https://www.google.com/maps/search/Satara' target='_blank'>Google Maps</a>";
+  } else if (input.includes("satara attractions")) {
+    return "Satara features natural waterfalls, forts, and picturesque landscapes.";
+  } else if (input.includes("satara hotels") || input.includes("satara accommodation")) {
+    return "For accommodation in Satara, explore budget hotels and local homestays.";
+  }
+
+  // Sindhudurg
+  else if (input.includes("sindhudurg directions")) {
+    return "For directions to Sindhudurg, click here: <a href='https://www.google.com/maps/search/Sindhudurg' target='_blank'>Google Maps</a>";
+  } else if (input.includes("sindhudurg attractions")) {
+    return "Sindhudurg is known for its pristine beaches, historic fort, and scenic coastal views.";
+  } else if (input.includes("sindhudurg hotels") || input.includes("sindhudurg accommodation")) {
+    return "For hotels in Sindhudurg, you can find beach resorts and budget homestays.";
+  }
+
+  // Solapur
+  else if (input.includes("solapur directions")) {
+    return "For directions to Solapur, click here: <a href='https://www.google.com/maps/search/Solapur' target='_blank'>Google Maps</a>";
+  } else if (input.includes("solapur attractions")) {
+    return "Solapur offers historical monuments, textile markets, and cultural experiences.";
+  } else if (input.includes("solapur hotels") || input.includes("solapur accommodation")) {
+    return "For accommodation in Solapur, consider local guesthouses and budget hotels.";
+  }
+
+  // Thane
+  else if (input.includes("thane directions")) {
+    return "For directions to Thane, click here: <a href='https://www.google.com/maps/search/Thane' target='_blank'>Google Maps</a>";
+  } else if (input.includes("thane attractions")) {
+    return "Thane boasts lakes, temples, and urban parks with scenic views.";
+  } else if (input.includes("thane hotels") || input.includes("thane accommodation")) {
+    return "For hotels in Thane, you can choose from mid-range hotels and budget options.";
+  }
+
+  // Wardha
+  else if (input.includes("wardha directions")) {
+    return "For directions to Wardha, click here: <a href='https://www.google.com/maps/search/Wardha' target='_blank'>Google Maps</a>";
+  } else if (input.includes("wardha attractions")) {
+    return "Wardha offers historical sites, Buddhist monuments, and natural retreats.";
+  } else if (input.includes("wardha hotels") || input.includes("wardha accommodation")) {
+    return "For accommodation in Wardha, look for budget hotels and local guesthouses.";
+  }
+
+  // Washim
+  else if (input.includes("washim directions")) {
+    return "For directions to Washim, click here: <a href='https://www.google.com/maps/search/Washim' target='_blank'>Google Maps</a>";
+  } else if (input.includes("washim attractions")) {
+    return "Washim features ancient temples, local markets, and cultural sites.";
+  } else if (input.includes("washim hotels") || input.includes("washim accommodation")) {
+    return "For hotels in Washim, you can find budget stays and modest guesthouses.";
+  }
+
+  // Yavatmal
+  else if (input.includes("yavatmal directions")) {
+    return "For directions to Yavatmal, click here: <a href='https://www.google.com/maps/search/Yavatmal' target='_blank'>Google Maps</a>";
+  } else if (input.includes("yavatmal attractions")) {
+    return "Yavatmal is known for its natural beauty, local festivals, and cultural heritage.";
+  } else if (input.includes("yavatmal hotels") || input.includes("yavatmal accommodation")) {
+    return "For accommodation in Yavatmal, explore budget hotels and local guesthouses.";
+  }
+
+  // ========= Final Fallback =========
+  else {
+    return "I'm not sure about that. Try asking about travel destinations, budget trips, or adventure spots!";
+  }
+}
+
+  
+</script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+  import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyA890SKxHYlOOCx5CZVrGjJwy_RvePD3Tc",
+    authDomain: "safar-sign-up-and-login.firebaseapp.com",
+    projectId: "safar-sign-up-and-login",
+    storageBucket: "safar-sign-up-and-login.appspot.com",
+    messagingSenderId: "340257717905",
+    appId: "1:340257717905:web:aaa7ea659e1bb1a4f40930",
+    measurementId: "G-EYY432MQJY"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const database = getDatabase(app);
+
+  window.submitFeedback = function () {
+    const feedback = document.getElementById("feedback-text").value;
+    const rating = document.querySelector("input[name='rating']:checked")?.value;
+    const username = sessionStorage.getItem("loggedInUser");
+
+    if (!feedback || !rating) {
+      alert("Please enter feedback and select a rating.");
+      return;
+    }
+
+    set(ref(database, "feedbacks/" + username.replace(".", "_")), {
+      feedback: feedback,
+      rating: rating,
+      username: username
+    }).then(() => {
+      alert("Feedback submitted successfully!");
+      document.getElementById("feedback-text").value = "";
+      document.querySelector("input[name='rating']:checked").checked = false;
+    }).catch((error) => {
+      alert("Error submitting feedback: " + error.message);
+    });
+  };
+</script>
+  <script>
+  function logout() {
+    sessionStorage.removeItem("loggedInUser");
+    window.location.href = "../index.html";
+  }
+</script>
+</html>
