@@ -1,0 +1,2569 @@
+<!DOCTYPE html>
+   <html lang="en">
+   <head>
+   <meta charset="UTF-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+   <title>Tourism Place Details with Geocoding</title>
+   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+   <style>
+      body {
+         font-family: Arial, sans-serif;
+         background: #f5f5f5;
+         margin: 0;
+         padding: 0;
+      }
+      .head {
+         background: linear-gradient(45deg, #d4953e, rgb(155, 107, 4), #da4804);
+         display: flex;
+         flex-direction: row;
+         align-items: center;
+         justify-content: space-between;
+         padding: 10px 20px;
+      }
+      .logo-title-container {
+         display: flex;
+         align-items: center;
+      }
+      .title {
+         font-size: 2.5rem;
+         color: rgba(227, 225, 225, 0.842);
+         margin-left: 20px;
+      }
+      main {
+         max-width: 900px;
+         margin: 20px auto;
+         background: white;
+         padding: 20px;
+         border-radius: 10px;
+      }
+      h1, h2, h3 {
+         color: #333;
+         margin: 0 0 10px;
+      }
+      #placeInfo {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    /* Styling for the photograph */
+    #placePhoto {
+      max-width: 40%;
+      height: auto;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    /* Right side text container */
+    .place-text {
+      flex: 1;
+      text-align: left;
+    }
+      #map {
+         width: 100%;
+         height: 400px;
+         border: 1px solid #ccc;
+         border-radius: 5px;
+         margin-top: 10px;
+      }
+      .noData {
+         color: red;
+         font-weight: bold;
+      }
+      /* Style for the tourism place photograph */
+      /* .place-photo {
+         max-width: 100%;
+         height: auto;
+         border: 1px solid #ccc;
+         border-radius: 5px;
+         margin: 15px 0;
+      } */
+      /* Nearby hotels and restaurants styling */
+      .nearby-section {
+         margin-top: 30px;
+      }
+      .nearby-item {
+         border: 1px solid #ddd;
+         border-radius: 8px;
+         padding: 10px;
+         margin: 10px;
+         background: #fafafa;
+         display: inline-block;
+         width: 250px;
+         vertical-align: top;
+         box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+      }
+      .nearby-item h4 {
+         margin: 0 0 5px;
+         font-size: 1.1rem;
+         color: #333;
+      }
+      .nearby-item p {
+         margin: 2px 0;
+         font-size: 0.95rem;
+         color: #555;
+      }
+   </style>
+   </head>
+   <body>
+   <nav>
+      <div class="head">
+         <div class="logo-title-container">
+         <img src="logo.png" class="logo" alt="Logo" height="80px" width="100px" />
+         <h1 class="title">Safar</h1>
+         </div>
+      </div>
+   </nav>
+   <main>
+      <!-- Tourism Place Info -->
+      <section id="placeInfo">
+         <!-- Place Photograph --> 
+         <img id="placePhoto" class="place-photo" src="" alt="Tourism Place Photo" style="display: none;">
+         <!-- Text Container -->
+         <div class="place-text">
+         <h2 id="placeName">Tourism Place</h2>
+         <p id="placeDescription">Place description will appear here.</p>
+         </div>
+      </section>
+      
+      <!-- Map Section -->
+      <section id="mapSection">
+         <h3>Map & Directions</h3>
+         <div id="map"></div>
+      </section>
+      
+      <!-- Nearby Hotels Section -->
+      <section class="nearby-section" id="hotelsSection">
+         <h3>Nearby Hotels</h3>
+         <div id="hotelsContainer">
+         <p>Loading hotels...</p>
+         </div>
+      </section>
+      
+      <!-- Nearby Restaurants Section -->
+      <!-- <section class="nearby-section" id="restaurantsSection">
+         <h3>Nearby Restaurants</h3>
+         <div id="restaurantsContainer">
+         <p>Loading restaurants...</p>
+         </div>
+      </section> -->
+   </main>
+
+   <!-- Leaflet JS -->
+   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+   <script>
+      // Function to extract query parameters from the URL.
+      function getQueryParam(param) {
+         const params = new URLSearchParams(window.location.search);
+         return params.get(param);
+      }
+
+      // Geocoding function using OpenStreetMap's Nominatim API.
+      async function getCoordinates(placeName) {
+   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(placeName)}&format=json&limit=1`;
+
+   try {
+      const response = await fetch(url, {
+         headers: {
+            "User-Agent": "YourAppName/1.0 (your.email@example.com)",
+            "Accept-Language": "en"
+         }
+      });
+
+      if (!response.ok) {
+         throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+         return {
+            lat: parseFloat(data[0].lat),
+            lng: parseFloat(data[0].lon)
+         };
+      } else {
+         console.warn(`No geocoding result for: "${placeName}"`);
+         return null;
+      }
+   } catch (error) {
+      console.error();
+      return null;`Geocoding error for "${placeName}":`, error.message
+   }
+}
+
+
+      // Details for tourism places, extended to include an image URL.
+      const placesDetails = {
+         "Dr Babasaheb Ambedkar Museum & Memorial": { 
+            description: "A museum in Pune showcasing Dr. Ambedkar's legacy.",
+            img: "images/Pune/symboisis.jpg"
+         },
+         "Lonavala": { 
+            description: "A beautiful hill station in Maharashtra known for scenic valleys and waterfalls.",
+            img: "images/Pune/lonavla.jpg"
+         },
+         "Khandala": { 
+            description: "A scenic getaway near Lonavala with stunning views.",
+            img: "images/Pune/khandala.jpg"
+         },
+         "Shaniwar Wada": { 
+            description: "A historic fort in Pune with rich cultural heritage.",
+            img: "images/Pune/shanivar.jpg"
+         },
+         "Aga Khan Palace": { 
+            description: "A monument in Pune with historical significance.",
+            img: "images/Pune/aga_khan.jpg"
+         },
+         "Rajiv Gandhi Zoo": { 
+            description: "A zoo in Pune with a diverse collection of wildlife.",
+            img: "images/Pune/rajiv.jpg"
+         },
+         "Jejuri": { 
+            description: "A temple town near Pune known for its spiritual significance.",
+            img: "images/Pune/jejuri.jpg"
+         },
+         "Sinhagad Fort": { 
+            description: "A historic fort offering panoramic views near Pune.",
+            img: "images/Pune/Sinhagad.jpg"
+         },
+         "Lohagad Fort": { 
+            description: "A fort known for its trekking trails near Pune.",
+            img: "images/Pune/lohgad.jpg"
+         },
+         "Dagdu Seth Ganesh Temple": { 
+            description: "A temple dedicated to Lord Ganesh in Pune.",
+            img: "images/Pune/Dagdu.jpg"
+         },
+         "Sarasbaug-Peshve Park": { 
+            description: "A popular park in Pune for relaxation and leisure.",
+            img: "images/Pune/sarasbagh.jpg"
+         },
+         "Khadakwasala Dam": { 
+            description: "A scenic dam area in Pune ideal for picnics.",
+            img: "images/Pune/khadak.jpg"
+         },
+         "Laal Mahaal": { 
+            description: "A historical palace in Pune with a regal past.",
+            img: "images/Pune/lal.jpg"
+         },
+         "Shivsrushti Historical Theme Park Pune": { 
+            description: "A theme park showcasing Pune's history.",
+            img: "images/Pune/shivshristi.jpg"
+         },
+         "Mahatma Phule Museum": { 
+            description: "A museum in Pune celebrating social reformers.",
+            img: "images/Pune/phule_m.jpg"
+         },
+         "Joshi's Museum Of Miniature Railways": { 
+            description: "A quirky museum in Pune featuring miniature trains.",
+            img: "images/Pune/rail_m.jpg"
+         },
+         "Phule Wada": { 
+            description: "A historic palace in Pune.",
+            img: "images/Pune/phule_w.jpg"
+         },
+         "Parvati Hill": { 
+            description: "A hill in Pune with temples and panoramic views.",
+            img: "images/Pune/parvati.jpg"
+         },
+         "Vishrambaug Wada": { 
+            description: "A historic mansion in Pune.",
+            img: "images/Pune/vishrambaug.jpg"
+         },
+         "P L Deshpande Garden": { 
+            description: "A well-known public garden in Pune.",
+            img: "images/Pune/deshpande.jpg"
+         },
+         "Mahadji Shinde Chhatri": { 
+            description: "A memorial in Pune honoring a historical figure.",
+            img: "images/Pune/mahadji.jpg"
+         },
+         "Blades of Glory Cricket Museum": { 
+            description: "A museum dedicated to cricket in Pune.",
+            img: "images/Pune/glory.jpg"
+         },
+         "Vetal Tekdi": { 
+            description: "A hill in Pune popular for its natural beauty.",
+            img: "images/Pune/vetal.jpg"
+         },
+         "Alibaug Beach": { 
+            description: "A popular beach in the Raigad district.",
+            img: "images/alibagh.jpg"
+         },
+         "Raigad Fort": { 
+            description: "A historic fort located in Raigad.",
+            img: "images/raigad.jpg"
+         },
+         "Mahabaleshwar": { 
+            description: "A hill station in Satara famous for strawberries and scenic views.",
+            img: "images/mahabaleshwar.jpg"
+         },
+         "Tarkarli Beach": { 
+            description: "A pristine beach in Sindhudurg known for its clear waters.",
+            img: "images/tarkali.jpg"
+         },
+         "Global Vipassana Pagoda": { 
+            description: "A monument in Mumbai dedicated to Vipassana meditation.",
+            img: "images/Mumbai/pagoda.jpg"
+         },
+         "Chaityabhoomi Dr. Babasaheb Ambedkar Smarak": { 
+            description: "A memorial in Mumbai honoring Dr. Ambedkar.",
+            img: "images/Mumbai/chaitya_bhoomi.jpg"
+         },
+         "Shree Siddhivinayak Temple": { 
+            description: "A famous temple in Mumbai revered by many.",
+            img: "images/Mumbai/siddhivinayak.jpg"
+
+         },
+         "Gateway Of India Mumbai": { 
+            description: "An iconic gateway in Mumbai and a major tourist attraction.",
+            img: "images/Mumbai/gate_way_of_india.jpg"
+         },
+         "Elephanta Caves": { 
+            description: "Ancient rock-cut caves near Mumbai with historical sculptures.",
+            img: "images/Mumbai/Elephanta.jpg"
+         },
+         "Sanjay Gandhi National Park": { 
+            description: "A large national park in Mumbai offering nature trails and wildlife.",
+            img: "images/Mumbai/sanjay_gandhi_national_park.jpg"
+         },
+         "Chhatrapati Shivaji Maharaj Vastu Sangrahalaya": { 
+            description: "A prominent museum in Mumbai showcasing art and history.",
+            img: "images/Mumbai/vastu_sanghralay.jpg"
+         },
+         "Mani Bhavan Gandhi Sangrahalaya": { 
+            description: "A museum in Mumbai dedicated to Mahatma Gandhi.",
+            img: "images/Mumbai/mani_bhavan.jpg"
+         },
+         "Haji Ali Dargah": { 
+            description: "A revered mosque and dargah located on an islet in Mumbai.",
+            img: "images/Mumbai/haji_ali.jpg"
+         },
+         "Bandra Worli Sea Link Bridge": { 
+            description: "A cable-stayed bridge connecting Bandra and Worli in Mumbai.",
+            img: "images/Mumbai/sea_link.jpg"
+         },
+         "Jehangir Art Gallery": { 
+            description: "An art gallery in Mumbai showcasing contemporary works.",
+            img: "images/Mumbai/jahangir.jpg"
+         },
+         "Marine Drive": { 
+            description: "A famous seaside promenade in Mumbai.",
+            img: "images/Mumbai/marin_drive.jpg"
+         },
+         "Snow Kingdom (Mumbai)": { 
+            description: "An indoor snow park in Mumbai for family fun.",
+            img: "images/Mumbai/snow.jpg"
+         },
+         "Dadasaheb Phalke Chitranagari": { 
+            description: "A film city in Mumbai celebrating Indian cinema.",
+            img: "images/Mumbai/flim_city.jpg"
+         },
+         "Basilica of Our Lady of the Mount (Mount St Mary Church)": { 
+            description: "A historic basilica in Mumbai.",
+            img: "images/Mumbai/church.jpg"
+         },
+         "Bandra Fort": { 
+            description: "A fort in the Bandra area of Mumbai.",
+            img: "images/Mumbai/bandara.jpg"
+         },
+         "Rajabai Clock Tower": { 
+            description: "A historic clock tower in Mumbai.",
+            img: "images/Mumbai/clock.jpg"
+         },
+         "Aksa Beach": { 
+            description: "A serene beach in Mumbai.",
+            img: "images/Mumbai/aksh_beach.jpg"
+         },
+         "Juhu Beach": { 
+            description: "One of Mumbai's most popular beaches.",
+            img: "images/Mumbai/juhu.jpg"
+         },
+         "Deekshabhoomi": { 
+            description: "A Buddhist monument in Nagpur.",
+            img: "images/Nagpur/Deekshabhoomi.jpg"
+         },
+         "Pench Tiger Reserve": { 
+            description: "A wildlife reserve near Nagpur known for its tigers.",
+            img: "images/Nagpur/pench.jpg"
+         },
+         "Dragon Palace": { 
+            description: "A popular Chinese restaurant in Nagpur.",
+            img: "images/Nagpur/dragon.jpg"
+         },
+         "Shri Ganesh Mandir Tekdi": { 
+            description: "A temple in Nagpur dedicated to Lord Ganesh.",
+            img: "images/Nagpur/ganesh.jpg"
+         },
+         "Hazrat Baba Tajuddin Dargah": { 
+            description: "A revered dargah in Nagpur.",
+            img: "images/Nagpur/hazrat.jpg"
+         },
+         "Ramtek": { 
+            description: "A historic town near Nagpur.",
+            img: "images/Nagpur/ramtek.jpg"
+         },
+         "Fun N Food Village Nagpur": { 
+            description: "An amusement park in Nagpur perfect for families.",
+            img: "images/Nagpur/fun.jpg"
+         },
+         "Mahalaxmi Temple, Kolhapur": { 
+            description: "A renowned temple in Kolhapur.",
+            img: "images/Kolhapur/maha.jpg"
+         },
+         "Shahu Palace": { 
+            description: "A historical palace in Kolhapur.",
+            img: "images/Kolhapur/shau_palace.jpg"
+         },
+         "Rankala Lake": { 
+            description: "A scenic lake in Kolhapur popular for evening strolls.",
+            img: "images/Kolhapur/rankala.jpg"
+         },
+         "Sajja Kothi": { 
+            description: "A historical building in Kolhapur.",
+            img: "images/Kolhapur/sajja.jpg"
+         },
+         "Bhavani Mandap": { 
+            description: "A monument in Kolhapur.",
+            img: "images/Kolhapur/bhavani.jpg"
+         },
+         "Teen Darwaja": { 
+            description: "A famous gateway in Kolhapur.",
+            img: "images/Kolhapur/teen.jpg"
+         },
+         "Panhala Fort": { 
+            description: "A historic fort in Kolhapur.",
+            img: "images/Kolhapur/panhala.jpg"
+         },
+         "Shalini Palace": { 
+            description: "A palace in Kolhapur with cultural significance.",
+            img: "images/Kolhapur/shalini.jpg"
+         },
+         "Rautwadi Waterfall, Radhanagri": { 
+            description: "A beautiful waterfall near Kolhapur.",
+            img: "images/Kolhapur/rautwadi.jpg"
+         },
+         "Siddharth Garden": { 
+            description: "A well-maintained garden in Aurangabad.",
+            img: "images/Aurangabad/Siddharth.jpg"
+         },
+         "Ajanta Caves": { 
+            description: "Ancient rock-cut caves near Aurangabad famed for their paintings.",
+            img: "images/Aurangabad/ajanta.jpg"
+         },
+         "Bibi Ka Maqbara": { 
+            description: "A mausoleum in Aurangabad often called the 'Taj of the Deccan'.",
+            img: "images/Aurangabad/bibi.jpg"
+         },
+         "Panchakki": { 
+            description: "A historic water mill in Aurangabad.",
+            img: "images/Aurangabad/pan.jpg"
+         },
+         "Ellora Caves": { 
+            description: "Famous caves in Aurangabad with intricate carvings.",
+            img: "images/Aurangabad/Ellora.jpg"
+         },
+         "Mhaismal": { 
+            description: "A scenic hill station near Aurangabad.",
+            img: "images/Aurangabad/mhais.jpg"
+         },
+         "Dr. Babasaheb Ambedkar Marathwada University": { 
+            description: "A notable university in Aurangabad.",
+            img: "images/Aurangabad/university.jpg"
+         },
+         "Jayakwadi Dam": { 
+            description: "A dam near Aurangabad with scenic surroundings.",
+            img: "images/Aurangabad/jayakwadi.jpg"
+         },
+         "Sant Dynaneshwar Udyaan": { 
+            description: "A park in Aurangabad.",
+            img: "images/Aurangabad/dnyaneshwar_garden.jpg"
+         },
+         "Bhadra Maruti Temple": { 
+            description: "A temple in Aurangabad.",
+            img: "images/Aurangabad/bhadra.jpg"
+         },
+         "Daultabad Fort": { 
+            description: "A historic fort in Aurangabad.",
+            img: "images/Aurangabad/Daultabad.jpg"
+         },
+         "Soneri Mahal": { 
+            description: "A historical monument in Aurangabad.",
+            img: "images/Aurangabad/soneri.jpg"
+         },
+         "Dr. Salim Ali Lake": { 
+            description: "A lake in Aurangabad.",
+            img: "images/Aurangabad/salim.jpg"
+         },
+         "Pittalkhora Caves": { 
+            description: "Caves near Aurangabad known for their scenic beauty.",
+            img: "images/Aurangabad/pittal.jpg"
+         },
+         "Gautala Autramghat Sanctuary": { 
+            description: "A wildlife sanctuary near Aurangabad.",
+            img: "images/Aurangabad/gautala.jpg"
+         },
+         "Goga Baba Hill": { 
+            description: "A hill in Aurangabad popular with visitors.",
+            img: "images/Aurangabad/goga.jpg"
+         },
+         "Chhatrapati Shivaji Maharaj Museum": { 
+            description: "A museum in Aurangabad dedicated to the legacy of Shivaji Maharaj.",
+            img: "images/Aurangabad/musium.jpg"
+         },
+         "Aurangabad Caves": { 
+            description: "Historic caves in Aurangabad.",
+            img: "images/Aurangabad/caves.jpg"
+         },
+         "H2O Waterpark": { 
+            description: "A fun water park in Aurangabad.",
+            img: "images/Aurangabad/H2o.jpg"
+         },
+         "Bani Begum Garden": { 
+            description: "A public garden in Aurangabad.",
+            img: "images/Aurangabad/bani.jpg"
+         },
+         "Tomb of Mughal Emperor Aurangzeb Alamgir": { 
+            description: "The tomb of Emperor Aurangzeb in Aurangabad.",
+            img: "images/Aurangabad/tomb.jpg"
+         },
+         //Sindudurgh
+         "Sindudurgh Fort":{
+            description: "uilt over a period of three years (1664-1667), the sea fort is spread over 48 acres, with a two-mile (3 km) long rampart, and walls that are 30 feet (9.1 m) high and 12 feet (3.7 m) thick. The massive walls were designed to serve as a deterrent to approaching enemies and to the waves and tides of the Arabian Sea.",
+            img: "images/Sindudurgh/sindhu.jpg"
+         },
+         "Vijaydurg Fort":{
+            description: "Under the rule of the Marathas, Vijaydurg played a pivotal role in naval warfare. The legendary Admiral Kanhoji Angre used the fort as a stronghold, cementing the Maratha Navy's supremacy over the Arabian Sea.",
+            img: "images/Sindudurgh/vijay.jpg"
+         },"Kunkeshwar Beach":{
+            description: "Kunakeshwar is primarily known for its ancient Shiva temple, located right on the shores of the Arabian Sea. This temple, believed to be over 1,000 years old, draws lakhs of devotees during Mahashivratri.",
+            img: "images/Sindudurgh/kunkeshwar.jpg"
+         },"Amboli Waterfall":{
+            description: "The main attraction for tourists is the incredibly-high rainfall (7 m average, per year) and the numerous waterfalls and mist during the monsoons. Legend has it that there are 108 Shiva temples in and around Amboli, of which only a dozen have been uncovered, one as recently as 2005.",
+            img: "images/Sindudurgh/amboli.jpg"
+         },
+         "Yashwant Gad Fort , Redi Fort": { 
+            description: "Yashwantgad Fort is located in Redi, Maharashtra, near the Maharashtra-Goa border. It sits on a small hill north of Terekhol Creek. The fort, now a tree-entangled ruin, overlooks the beaches of the southern Maharashtra coast. 150 Ft..",
+            img: "images/Sindudurgh/yashwant_fort.jpg"
+         }, "Tarkarli Beach": { 
+            description: "Tarkarli Beach is a coral beach in Sindhudurg district of Maharashtra, India. It's located where the Karli River meets the Arabian Sea. The beach is known for its white sand, backwaters, and greenery.",
+            img: "images/Sindudurgh/tarkali.jpg"
+         }, "Nivati Beach": { 
+            description: "Known for its beautiful sandy shores and azure blue waters, Nivati Beach is located 32 kms away from Tarkarli. Popular as one of the most picturesque beaches of Tarkarli, the highlight of the beach is the Nivati Fort which invites a lot of tourists to visit the place..",
+            img: "images/Sindudurgh/nivati.jpg"
+         }, "Shiroda Beach": { 
+            description: "Shiroda is a small village in the Sindhudurg district of Maharashtra. The Shiroda beach situated in this village is a perfect destination for beach holidays in Maharashtra and this popular beach also has a number of tourism places to be visited in and around the beach. The blue color of the sea, the dazzling water and the cool breeze blowing through the beach, enrich the surrounding of the place and is worthy to be visited. There are a lot of coconut trees and palm trees throughout the stretch of the beach which make the seashore look even more beautiful. This place has a feasible connectivity with all the major cities.",
+            img: "images/Sindudurgh/shiroda.jpg"
+         }, "Devbagh Beach": { 
+            description: "Devbag beach is a beautiful beach in Sindhudurg district near Malvan. The place is not very crowded and hence the sea is clean. The white sand makes the beach look beautiful.",
+            img: "images/Sindudurgh/devbagh.jpg"
+         }, "Jay Ganesh Mandir": { 
+            description: "Beautiful and Calm Mandir. Unique Ashtakon where you stand at the centre to pray and Ganeshji's 8 Ashtavinayak roop are placed on the roof circle.",
+            img: "images/Sindudurgh/jay.jpg"
+         }, "Sawantwadi Palace": { 
+            description: "Sawantwadi, a town in the Sindhudurg district of Maharashtra, is famous for its traditional wooden toys, lacquerware, and the Sawantwadi Palace, the former residence of the Sawant-Bhonsle rulers. ",
+            img: "images/Sindudurgh/sawantwadi.jpg"
+         }, "Rock Garden": { 
+            description: "The Rock Garden is acclaimed for its pioneering role in the environmental art and recycling movement. It demonstrates how art can transform urban spaces and engage communities. Saini's vision and creativity have created a space that not only offers aesthetic pleasure but also promotes sustainability and resource reuse.",
+            img: "images/Sindudurgh/rock.jpg"
+         }, "Tsunami Island": { 
+            description: "It is called Tsunami Island because its emergence from the sea happened after 2004's deadly Tsunami, which devastated many areas along the eastern and western coastlines of India. Caused by to Sumatra-Andaman earthquake, the tsunami killed more than two million people in 14 nearby countries.",
+            img: "images/Sindudurgh/tsunami.jpg"
+         }, "Rock Garden": { 
+            description: "The Rock Garden is acclaimed for its pioneering role in the environmental art and recycling movement. It demonstrates how art can transform urban spaces and engage communities. Saini's vision and creativity have created a space that not only offers aesthetic pleasure but also promotes sustainability and resource reuse.",
+            img: "images/Sindudurgh/rock.jpg"
+         },
+         "Shri Dev Rameshwar Temple": { 
+            description: "Shri Dev Rameshwar Temple is located in the village Rameshwar Wadi in Devgad taluka of Sindhudurg District, Maharashtra, India. This temple is dedicated to the Hindu deity Shiva.[1] It is a historic temple built in the 16th century.",
+            img: "images/Sindudurgh/dev.jpg"
+         },
+         //Beed
+         "Chalukya era Shri Kankaleshwar Temple": { 
+            description: "The Chalukya King Vikramaditya (VI) built this temple in the 10th to 11th century. This is a Dashavatari temple. Women of the Chalukya period used to participate directly in the battles. There is a sculpture of fighting women on the temple",
+            img: "images/Beed/chalukya.jpg"
+         },
+         "Parli Vaijnath Temple": { 
+            description: "Parli Vaijnath is primarily famous for the Parli Vaijnath Temple, a revered Jyotirlinga dedicated to Lord Shiva. It's one of the 12 revered Jyotirlingas in India and is a significant pilgrimage site. The temple's architectural splendor and spiritual significance attract devotees and tourists alike.",
+            img: "images/Beed/parali.jpg"
+         }, "Kapildhar Waterfall": { 
+            description: " It is believed to be named after the sage Kapil, who is said to have meditated at this site. According to legend, the Narmada River cascades down from a height of about 100 feet to form the Kapildhara Falls and flows onward to the plains, symbolizing the descent of the divine into the earthly realm.",
+            img: "images/Beed/kapildhara.jpeg"
+         }, "Dharur Fort": { 
+            description: " Dharur is a city and a municipal council in Beed district in the state of Maharashtra, India. Dharur, also known as Kille Dharur (किल्ले धारूर), derives its name and historical significance from the prominent fort located in the town. The fort has played a vital role in shaping the town's history and economy. ",
+            img: "images/Beed/kapildhara.jpeg"
+         }, "Balaghat Hill Ranges": { 
+            description: " Dharur is a city and a municipal council in Beed district in the state of Maharashtra, India. Dharur, also known as Kille Dharur (किल्ले धारूर), derives its name and historical significance from the prominent fort located in the town. The fort has played a vital role in shaping the town's history and economy. ",
+            img: "images/Beed/balaghat.jpeg"
+         },"Kankaleshwar Lake": { 
+            description: " Kankaleshwar Lake is an 84-meter square lake in Beed, Maharashtra, India. It is known for housing the Kankaleshwar Temple, a Shiva temple situated in the middle of the lake. The temple is reached by a causeway that connects it to the shore ",
+            img: "images/Beed/kankaleshwar.jpeg"
+         },"Historic Jama Masjid": { 
+            description: " Jama Masjid stands as an incredible testament to Mughal engineering, featuring a vast courtyard that can hold up to 25,000 worshipers and its magnificent design, commission by Emperor Shah Jahan who had also designed Taj Mahal in 1650 - 1656 by employing 5,000 workers over six years (1650-1656). ",
+            img: "images/Beed/jama.jpeg"
+         },"Ambajogai Yogeshwari Temple": { 
+            description: " Legend :Goddess Parvati also was known as Shree Yogeshwari Devi appeared at this place to kill demon Mahishasur. This historical and oldest temple of the Goddess -Yogeshwari has been famous from ancient time. The architecture of the temple is in Hemadpanti style.",
+            img: "images/Beed/Yogeshwari.jpeg"
+         },"Hattibet-Deogiri": { 
+            description: " A place called Mauje Hatti Bet is located 16 km west of Udgir town. Hatti Island has gained importance since ancient times.",
+            img: "images/Beed/hatti.jpeg"
+         },
+         //gadchiroli
+         
+      "Markanda Temple": { 
+            description: " This temple complex is dedicated to Lord Shiva. However, the Markanda name is derived from the Markandeya rishi of Haryana who was an ardent devotee of Shiva. He went into penance for years on the banks of Markanda river and finally tried to offer his head to Shiva when Shiva appeared and stopped him.",
+            img: "images/Gadchiroli/markanda.jpeg"
+         },
+      "Chaprala Wildlife Sanctuary": { 
+            description: " Chaprala Wildlife Sanctuary in Gadchiroli, Maharashtra, is a protected area established in 1986, covering approximately 134.78 square kilometers. It's known for its diverse ecosystem, including riparian areas along the confluence of the Wardha and Wainganga rivers, and is home to various wild animals and birds, including tigers, leopards, and several endangered species.",
+            img: "images/Gadchiroli/chaprala.jpeg"
+         },
+      "Wadadham Fossil Park": { 
+            description: " Wadadam Fossil Park is located in a village known as Wadadam in Sironcha taluka in the district of Gadchiroli of Maharashtra State. It is about 19 km (12 mi) from Sironcha and about 189 km (117 mi) South of District Headquarters Gadchiroli. Here a group of paleontologists have unearthed fossils, it is believed that these are dinosaur fossils and are millions of years old. In India, Sironcha is one of the five places in the country where a large number of fossils have been discovered. A full skeleton of a dinosaur was unearthed in 1959 in Kothapalli-Pochampally village, this fossil has been kept in a museum in Kolkata.",
+            img: "images/Gadchiroli/fossil.jpeg"
+         },
+
+         "Paralkot Fort": { 
+            description: " Kherkatta Dam is a medium irrigation project built across the Kotri River, about 10 km (6.2 mi) northwest of Kapsi in the Kanker district of Chhattisgarh, India. It is the largest dam of the district and gets its name from the neighbouring village of Kherkatta. The lake that the dam forms behind it is officially known as the Paralkot Reservoir, which extends in a northwest direction and partially into the Mohla-Manpur-Ambagarh Chowki district. The distance of the dam is approximately 20 km (12 mi) from Pakhanjur, 35 km (22 mi) from Manpur and 110 km (68 mi) from Kanker.",
+            img: "images/Gadchiroli/bhimragrah.jpeg"
+         },
+         "Danteshwari Temple": { 
+            description: "Danteshwari Temple is Hindu temple, dedicated to Goddess Danteshwari, and is one of the 52 Shakti Peethas, shrines of Shakti, the divine feminine, spread across India. The temple built in the 14th century, is situated in Dantewada, a town situated 80 km from Jagdalpur Tehsil, Chhattisgarh. Dantewada is named after the Goddess Danteshwari, the presiding deity of the earlier Kakatiya rulers. Traditionally she is the Kuldevi (family goddess) of Bastar state.",
+            img: "images/Gadchiroli/danteshwari.jpeg"
+         },
+          "Madia Gond Villages (Tribal Tourism)": { 
+            description: " Madia Gond villages offer a unique opportunity for tribal tourism, showcasing the unique culture and lifestyle of this indigenous community. These villages, particularly those in the Gadchiroli and Chandrapur districts of Maharashtra, are located in or near protected areas like the Tadoba Andhari Tiger Reserve. This allows visitors to experience the co-existence of humans and wildlife, with the forest department training locals for tourism and wildlife conservation roles.",
+            img: "images/Gadchiroli/madia.jpeg"
+         },
+         "Bodhi Gaya Waterfall": { 
+            description: "While Bodh Gaya is famous for the Mahabodhi Temple and its spiritual significance as the place where Buddha attained enlightenment, it doesn't have a famous waterfall within its immediate vicinity. Bodh Gaya is a major Buddhist pilgrimage site located in the Gaya district of Bihar, India.",
+            img: "images/Gadchiroli/bodh.jpeg"
+         },
+         "Alapalli Forest Reserve": { 
+            description: " A six hectare patch of these forests located 16 km (9.9 mi) east of the village, named Glory of Allapalli, was first designated for conservation in 1953, and in 2014 declared as the first Biodiversity Heritage Site in Maharashtra. More than 130 floral species have been observed at the site.",  
+            img: "images/Gadchiroli/glory.jpeg"
+         },
+         "Shiv Mandir, Sironcha": { 
+            description: " was built by owner of Kemp Fort, Ravi V Melwani, a staunch devotee of Lord Shiva. Shiv Mandir was inaugurated on 27 March 1995 on the day of Mahashivratri ( the Great Night of Shiva). The main attraction here is the 65 ft high statue of Lord shiva..",  
+            img: "images/Gadchiroli/shiv.jpeg"
+         },
+         //Ratnagiri
+         "Ganpatipule Beach": { 
+            description: " Ganpatipule Beach, located in Maharashtra, is a popular tourist destination known for its clean, sandy beach and the nearby Swayambhu Ganpati Temple. It's part of the Konkan coast and is known for its serene atmosphere and natural beauty. The beach is a popular spot for relaxation and offers various water sports activities.",  
+            img: "images/Ratnagiri/ganpati.jpeg"
+         },
+            
+         "Thibaw Palace": {
+            description: "A historical palace built for the exiled king of Burma, Thibaw Min, offering a glimpse into colonial history and architecture.",
+            img: "images/Ratnagiri/thibaw_palace.jpg"
+         },
+         "Ratnadurg Fort": {
+            description: "A majestic fort overlooking the Arabian Sea, known for its scenic views, lighthouse, and historic ruins.",
+            img: "images/Ratnagiri/ratnadurg.jpg"
+         },
+         "Pawas Swami Swaroopanand Ashram": {
+            description: "A peaceful spiritual retreat associated with Swami Swaroopanand, attracting devotees seeking solace and spirituality.",
+            img: "images/Ratnagiri/pawas.jpg"
+         },
+         "Aare-Ware Beach": {
+            description: "Twin beaches with unspoiled beauty and turquoise water, perfect for quiet relaxation away from tourist crowds.",
+            img: "images/Ratnagiri/aare_ware.jpg"
+         },
+         "Jaigad Fort": {
+            description: "A coastal fort near the Jaigad Lighthouse, offering panoramic sea views and insights into the Maratha defense system.",
+            img: "images/Ratnagiri/jaigad_fort.jpg"
+         },
+         "Bhatye Beach": {
+            description: "A long stretch of sandy beach popular for evening walks, beach sports, and scenic sunsets.",
+            img: "images/Ratnagiri/bhatye.jpg"
+         },
+         "Kunkeshwar Temple": {
+            description: "A beautiful temple dedicated to Lord Shiva located on the shore, known as 'Kashi of the South'.",
+            img: "images/Ratnagiri/kunkeshwar.jpg"
+         },
+         "Velas Turtle Festival": {
+            description: "A unique eco-tourism event celebrating the hatching of Olive Ridley turtles, with community-led conservation efforts.",
+            img: "images/Ratnagiri/velas.jpg"
+         },
+         "Marleshwar Waterfall & Temple": {
+            description: "A hidden gem with a stunning waterfall and a cave temple of Lord Shiva surrounded by lush greenery.",
+            img: "images/Ratnagiri/marleshwar.jpg"
+         },
+         //Sangli
+    "Sangli Ganpati Temple": {
+        description: "One of the most revered temples in Sangli, dedicated to Lord Ganesha and known for its stunning architecture and cultural importance.",
+        img: "images/Sangli/g_temple.jpeg"
+    },
+    "Dandoba Hill Station": {
+        description: "A scenic hill station ideal for trekking, nature walks, and picnics, offering panoramic views and a peaceful atmosphere.",
+        img: "images/Sangli/dhondoba.jpeg"
+    },
+    "Khanapur Fort": {
+        description: "An ancient fort near Sangli with historical significance and ruins that narrate tales of Maratha valor.",
+        img: "images/Sangli/khanapur.jpeg"
+    },
+    "Krishna River View": {
+        description: "A relaxing riverside spot offering serene views of the Krishna River and a great place for photography and evening strolls.",
+        img: "images/Sangli/krishna.jpeg"
+    },
+    "Gokak Waterfalls": {
+        description: "A breathtaking waterfall known for its horse-shoe shape and the old hanging bridge that gives a perfect panoramic view.",
+        img: "images/Sangli/gokak.jpg"
+    },
+    "Sagareshwar Wildlife Sanctuary": {
+        description: "A man-made forest reserve and wildlife sanctuary offering a rich variety of flora and fauna, perfect for nature lovers.",
+        img: "images/Sangli/sagareshwar.jpeg"
+    },
+    "Audumbar Datta Mandir": {
+        description: "A sacred pilgrimage site on the banks of River Krishna, associated with Shri Narasimha Saraswati — a revered spiritual leader.",
+        img: "images/Sangli/Audumbar.jpeg"
+    },
+    "Vitthal-Rukmini Temple, Pandharpur": {
+        description: "A famous temple dedicated to Lord Vitthal and Goddess Rukmini, visited by millions of devotees, especially during Ashadi Ekadashi.",
+        img: "images/Sangli/vitthal.jpeg"
+    },
+    "Chandoli National Park": {
+        description: "A part of the Sahyadri Tiger Reserve, this national park is rich in wildlife and lush greenery — ideal for eco-tourism and safaris.",
+        img: "images/Sangli/chandoli.jpeg"
+    },
+    "Narasimha Wadi": {
+        description: "A spiritually significant place located at the confluence of the Krishna and Panchganga rivers, known for its Dattatreya temple.",
+        img: "images/Sangli/narsimha.jpeg"
+    },
+
+    //Nanded 
+    "Hazur Sahib Gurudwara": {
+        description: "One of the five takhts in Sikhism, this majestic gurudwara marks the place where Guru Gobind Singh took his last breath. A major pilgrimage site for Sikhs.",
+        img: "images/Nanded/gurudwara.jpeg"
+    },
+    "Kandhar Fort": {
+        description: "A historic hilltop fort showcasing the ancient architecture of the Bahmani dynasty, offering panoramic views of the surrounding landscape.",
+        img: "images/Nanded/kandhar.jpeg"
+    },
+    "Sahastrakund Waterfall": {
+        description: "A beautiful natural waterfall on the Penganga River, surrounded by rocky terrain and a favorite spot for nature photography.",
+        img: "images/Nanded/sahastrakund.jpg"
+    },
+    "Unkeshwar Hot Springs": {
+        description: "Natural sulfur hot springs believed to have healing properties, set in a tranquil location near the Unkeshwar temple.",
+        img: "images/Nanded/hot.png"
+    },
+    "Malegaon Yatra": {
+        description: "An important local fair and religious event that attracts devotees and tourists, reflecting the rich cultural traditions of the region.",
+        img: "images/Nanded/malegaon.jpeg"
+    },
+    "Isapur Dam": {
+        description: "A scenic spot and crucial irrigation source located on the Penganga River, popular for quiet nature outings and birdwatching.",
+        img: "images/Nanded/isanpur.jpeg"
+    },
+    "Hottal Temple": {
+        description: "An ancient temple known for its intricate stone carvings and spiritual significance, dedicated to Lord Shiva.",
+        img: "images/Nanded/hottal.jpeg"
+    },
+    "Mahurgad Fort & Renuka Devi Temple": {
+        description: "A hill fort and revered temple complex dedicated to Goddess Renuka, considered the birthplace of Lord Parashurama.",
+        img: "images/Nanded/mahur.jpeg"
+    },
+    "Visawa Garden & Park": {
+        description: "A well-maintained recreational park in Nanded city ideal for families, with greenery, walking paths, and a play area.",
+        img: "images/Nanded/visawa.jpeg"
+    },
+    "Nanded Fort": {
+        description: "An ancient fortification on the banks of the Godavari River, with historical significance dating back to the Satavahana era.",
+        img: "images/Nanded/nanded.jpeg"
+    },
+
+    //yavatmal
+    "Tipeshwar Wildlife Sanctuary": {
+        description: "A rich biodiversity hotspot famous for its tiger sightings, this sanctuary offers safari experiences amidst lush deciduous forests.",
+        img: "images/Yavatmal/tipeshwar.jpeg"
+    },
+    "Kalamb Temple": {
+        description: "A revered pilgrimage site dedicated to Lord Shiva, known for its peaceful ambiance and spiritual significance.",
+        img: "images/Yavatmal/kalamb.jpeg"
+    },
+    "Waghadi River": {
+        description: "A scenic river spot in Yavatmal ideal for picnics and enjoying natural surroundings, especially during the monsoon.",
+        img: "images/Yavatmal/waghedi.jpeg"
+    },
+    "Painganga Wildlife Sanctuary": {
+        description: "A serene sanctuary with a variety of flora and fauna, ideal for nature lovers, bird watchers, and eco-tourists.",
+        img: "images/Yavatmal/painganga.jpeg"
+    },
+    "Mahadev Temple, Ghatanji": {
+        description: "An ancient temple dedicated to Lord Shiva, drawing devotees from nearby towns, especially during the festive seasons.",
+        img: "images/Yavatmal/ghatanji.jpeg"
+    },
+    "Jagat Mandir, Darwha": {
+        description: "A beautiful and prominent Hindu temple in Darwha, known for its spiritual atmosphere and intricate design.",
+        img: "images/Yavatmal/jagat.jpeg"
+    },
+    "Arni Jain Mandir": {
+        description: "A sacred Jain temple in Arni, attracting pilgrims with its peaceful setting and stunning architectural details.",
+        img: "images/Yavatmal/arni.jpeg"
+    },
+    "Pandharkawada Forest": {
+        description: "A green escape located in Yavatmal, this forest is popular among nature enthusiasts and travelers seeking tranquility.",
+        img: "images/Yavatmal/pandharkawada.jpeg"
+    },
+    "Shri Datta Mandir, Digras": {
+        description: "A devotional site dedicated to Lord Dattatreya, located in Digras, offering a peaceful environment for prayer and reflection.",
+        img: "images/Yavatmal/datta.jpeg"
+    },
+
+    //Amravati
+    "Ambadevi Temple": {
+        description: "A revered temple dedicated to Goddess Amba, believed to be over 1,000 years old and a prominent spiritual center in Amravati.",
+        img: "images/Amravati/ambadevi.jpeg"
+    },
+    "Chatri Talao": {
+        description: "A serene water reservoir constructed in the 19th century, now a popular picnic and boating spot surrounded by lush greenery.",
+        img: "images/Amravati/chatri.jpeg"
+    },
+    "Gugamal National Park": {
+        description: "A part of the Melghat Tiger Reserve, home to diverse wildlife including tigers, leopards, and sloth bears, ideal for nature lovers and wildlife photographers.",
+        img: "images/Amravati/gungamal.jpeg"
+    },
+    "Wadali Talao": {
+        description: "A peaceful artificial lake on the outskirts of Amravati, ideal for family outings, birdwatching, and paddle boating.",
+        img: "images/Amravati/wadali.jpeg"
+    },
+    "Melghat Tiger Reserve": {
+        description: "A prominent tiger reserve in Maharashtra's Satpura ranges, known for its rich biodiversity and ecological importance.",
+        img: "images/Amravati/melghat.jpeg"
+    },
+    "Hurricane Point, Chikhaldara": {
+        description: "A breathtaking viewpoint in Chikhaldara offering panoramic views of deep valleys, forests, and the Melghat hills.",
+        img: "images/Amravati/hurricane.jpeg"
+    },
+    "Semadoh Lake": {
+        description: "A scenic lake nestled in the Melghat forest region, perfect for peaceful nature experiences and jungle tourism.",
+        img: "images/Amravati/semadoh.jpeg"
+    },
+    "Bhakti Dham Temple": {
+        description: "A modern temple complex devoted to various Hindu deities, known for its tranquil ambiance and regular spiritual activities.",
+        img: "images/Amravati/bhakti.jpeg"
+    },
+    "Muktagiri Jain Temples": {
+        description: "A cluster of 52 temples built along a scenic hill, known for its beautiful carvings and religious significance in Jainism.",
+        img: "images/Amravati/muktagiri.jpeg"
+    },
+    "Gavilgad Fort": {
+        description: "An ancient mountain fort located in the Satpura ranges, offering scenic views and insight into medieval military architecture.",
+        img: "images/Amravati/gavilgad.jpeg"
+    },
+
+    //Buldhana
+    "Lonar Crater Lake": {
+        description: "A unique saltwater lake created by a meteor impact over 50,000 years ago, known for its scientific, ecological, and mythological significance.",
+        img: "images/Buldhana/lonar.jpeg"
+    },
+    "Sindkhed Raja - Birthplace of Rajmata Jijabai": {
+        description: "The historic town where Rajmata Jijabai, mother of Chhatrapati Shivaji Maharaj, was born. A place rich in Maratha heritage.",
+        img: "images/Buldhana/sindkhed.jpeg"
+    },
+    "Anand Sagar": {
+        description: "A sprawling complex with gardens, fountains, temples, and a spiritual ambiance, developed by the Shri Gajanan Maharaj Sansthan in Shegaon.",
+        img: "images/Buldhana/anandsagar.jpeg"
+    },
+    "Shegaon - Shri Gajanan Maharaj Temple": {
+        description: "A famous temple dedicated to Shri Gajanan Maharaj, attracting lakhs of devotees throughout the year from across Maharashtra.",
+        img: "images/Buldhana/shegaon.jpg"
+    },
+    "Khamgaon Ganesh Temple": {
+        description: "An ancient temple dedicated to Lord Ganesh, popular among locals and visitors seeking blessings in a peaceful atmosphere.",
+        img: "images/Buldhana/khamgaon.jpeg"
+    },
+    "Dnyanganga Wildlife Sanctuary": {
+        description: "A protected forest area offering a tranquil environment for birdwatching, trekking, and experiencing rich biodiversity.",
+        img: "images/Buldhana/dnyanganga.jpeg"
+    },
+    "Gomukh Temple, Lonar": {
+        description: "A scenic temple near Lonar Lake, where water flows continuously from a cow’s mouth-shaped stone, considered sacred.",
+        img: "images/Buldhana/gomukh.jpeg"
+    },
+    "Hanuman Temple, Mehkar": {
+        description: "A spiritually significant temple dedicated to Lord Hanuman, believed to be very powerful and frequently visited by devotees.",
+        img: "images/Buldhana/hanuman.jpeg"
+    },
+    "Rajur Ganpati": {
+        description: "A revered temple of Lord Ganesha in Rajur, known for its architectural beauty and spiritual importance among devotees.",
+        img: "images/Buldhana/rajur.jpeg"
+    },
+    "Chikhli Mahadev Temple": {
+        description: "A beautiful shrine dedicated to Lord Shiva, located in Chikhli, drawing pilgrims especially during Shivratri.",
+        img: "images/Buldhana/chikhli.jpeg"
+    },
+    //Solapur
+    "Pandharpur - Shri Vitthal Rukmini Temple": {
+        description: "A major pilgrimage site dedicated to Lord Vitthal and Rukmini, attracting millions of devotees, especially during Ashadhi Ekadashi.",
+        img: "images/Solapur/pandharpur.jpeg"
+    },
+    "Akkalkot Swami Samarth Temple": {
+        description: "A revered temple dedicated to Swami Samarth Maharaj, a spiritual leader known for his miracles and teachings.",
+        img: "images/Solapur/swami.jpeg"
+    },
+    "Siddheshwar Temple & Lake": {
+        description: "A serene temple dedicated to Lord Siddheshwar, located beside a picturesque lake in the heart of Solapur city.",
+        img: "images/Solapur/siddheshwar.jpeg"
+    },
+    "Great Indian Bustard Sanctuary": {
+        description: "A unique sanctuary dedicated to the endangered Great Indian Bustard, offering wildlife enthusiasts a rare birdwatching experience.",
+        img: "images/Solapur/great.jpeg"
+    },
+    "Hipparga Lake": {
+        description: "A peaceful lake surrounded by natural beauty, ideal for relaxing, birdwatching, and enjoying calm evenings.",
+        img: "images/Solapur/hipparga.jpeg"
+    },
+    "Karmala Fort": {
+        description: "An ancient fort with historical significance, offering panoramic views and insights into the region's heritage.",
+        img: "images/Solapur/karmala.jpeg"
+    },
+    "Barshi Bhagwant Temple": {
+        description: "A famous temple in Barshi, known for its devotion to Lord Vishnu and intricate temple architecture.",
+        img: "images/Solapur/barshi.jpeg"
+    },
+    "Nannaj Wildlife Sanctuary": {
+        description: "A lesser-known yet vital wildlife sanctuary, home to diverse species including the Great Indian Bustard.",
+        img: "images/Solapur/nannaj.jpeg"
+    },
+    "Shree Dahigaun Teerth": {
+        description: "A sacred Jain pilgrimage site located in Dahigaon, known for its spiritual ambiance and beautiful carvings.",
+        img: "images/Solapur/dahigaun.jpeg"
+    },
+    "Tuljapur Ghat": {
+        description: "A scenic mountain pass near Tuljapur offering panoramic views and access to the famous Tulja Bhavani Temple.",
+        img: "images/Solapur/tuljapur.jpeg"
+    },
+
+    //Washim
+    "Balaji Temple": {
+        description: "A sacred temple dedicated to Lord Balaji, known for its peaceful atmosphere and spiritual significance.",
+        img: "images/Washim/balaji.jpeg"
+    },
+    "Poharadevi Temple": {
+        description: "A revered temple dedicated to Goddess Poharadevi, attracting devotees from across Maharashtra for blessings and festivals.",
+        img: "images/Washim/poharadevi.jpeg"
+    },
+    "Shri Nrusimha Saraswati Mandir": {
+        description: "Dedicated to Shri Nrusimha Saraswati, the temple is a spiritual destination known for its deep religious roots and tranquility.",
+        img: "images/Washim/nrusimha.jpeg"
+    },
+    "Sapna Water Park": {
+        description: "A fun and family-friendly water park offering a refreshing escape with rides, pools, and entertainment.",
+        img: "images/Washim/sapna.jpeg"
+    },
+    "Karanja Lad": {
+        description: "A historic town known for being the birthplace of Shri Nrusimha Saraswati and home to many ancient temples.",
+        img: "images/Washim/karanja.jpeg"
+    },
+    "Padmawati Devi Temple": {
+        description: "An important temple dedicated to Goddess Padmawati, known for its spiritual aura and regular religious gatherings.",
+        img: "images/Washim/padmawati.jpeg"
+    },
+    "Degaon Rameshwar Temple": {
+        description: "An ancient temple dedicated to Lord Shiva located in Degaon, offering a serene atmosphere and cultural importance.",
+        img: "images/Washim/degaon.jpeg"
+    },
+    "Shri Chintamani Temple": {
+        description: "A temple of Lord Ganesha, known for fulfilling devotees’ wishes and situated in a peaceful locale.",
+        img: "images/Washim/chintamani.jpeg"
+    },
+    "Ansing Fort": {
+        description: "A historic hill fort in Washim, offering scenic views and a glimpse into the region's military past.",
+        img: "images/Washim/ansing.jpeg"
+    },
+    "Manora Fort": {
+        description: "An old fort standing as a symbol of historical pride, popular for its architecture and surrounding views.",
+        img: "images/Washim/manora.jpeg"
+    },
+
+    //Jalna
+    
+    "Matsyodari Devi Temple": {
+        description: "A revered temple situated on a hill shaped like a fish, dedicated to Goddess Matsyodari, a form of Durga.",
+        img: "images/Jalna/matsyodari.jpeg"
+    },
+    "Jalna Fort": {
+        description: "A historic fort built during the Mughal era, reflecting ancient architecture and offering insights into Jalna's history.",
+        img: "images/Jalna/fort.jpeg"
+    },
+    "Jamb Samarth Temple": {
+        description: "The birthplace of Saint Ramdas Swami, this temple is a spiritual destination known for peace and devotion.",
+        img: "images/Jalna/jamb.jpeg"
+    },
+    "Anandi Swami Temple": {
+        description: "A temple dedicated to Saint Anandi Swami, known for its calm ambiance and religious importance.",
+        img: "images/Jalna/anandi.jpeg"
+    },
+    "Khandoba Mandir": {
+        description: "An ancient temple dedicated to Lord Khandoba, attracting many devotees especially during festivals.",
+        img: "images/Jalna/khandoba.jpeg"
+    },
+    "Moti Talab": {
+        description: "A scenic lake in Jalna known for its beauty and tranquility, ideal for peaceful evenings and local outings.",
+        img: "images/Jalna/moti.jpeg"
+    },
+    "Shri Datta Ashram": {
+        description: "A spiritual retreat and religious site dedicated to Lord Dattatreya, offering serenity and meditation spaces.",
+        img: "images/Jalna/datta.jpeg"
+    },
+    "Dhar Shiv Temple": {
+        description: "An old temple dedicated to Lord Shiva, nestled in natural surroundings and steeped in local belief.",
+        img: "images/Jalna/dhar.jpeg"
+    },
+
+    //Osmanabad
+
+    "Tuljapur - Tulja Bhavani Temple": {
+        description: "A famous pilgrimage site dedicated to Goddess Tulja Bhavani, the family deity of many, including Chhatrapati Shivaji Maharaj.",
+        img: "images/Osmanabad/tulja.jpeg"
+    },
+    "Dharashiv Caves": {
+        description: "Ancient rock-cut Buddhist caves known for their historical and archaeological importance, dating back to the 6th century.",
+        img: "images/Osmanabad/Dharashiv.jpeg"
+    },
+    "Naldurg Fort": {
+        description: "One of the strongest forts in Maharashtra with intricate bastions and a beautiful water tank inside the fort premises.",
+        img: "images/Osmanabad/naldurg.jpeg"
+    },
+    "Yedshi Ramling Wildlife Sanctuary": {
+        description: "A peaceful sanctuary home to various flora and fauna, perfect for nature lovers and bird watchers.",
+        img: "images/Osmanabad/yedshi.jpeg"
+    },
+    "Paranda Fort": {
+        description: "A majestic fort built in the Bahmani era with impressive architecture and strategic significance.",
+        img: "images/Osmanabad/paranda.jpeg"
+    },
+    "Kallam Stepwell": {
+        description: "An ancient stepwell known for its architecture and once used as a water resource for the town.",
+        img: "images/Osmanabad/kallam.jpeg"
+    },
+    "Bhandarwadi Waterfall": {
+        description: "A scenic and lesser-known waterfall offering a peaceful natural escape, especially beautiful during monsoon.",
+        img: "images/Osmanabad/bhandarwadi.jpeg"
+    },
+    "Hatti Bet": {
+        description: "A rocky hill area popular among trekkers and those seeking scenic landscapes and a quiet retreat.",
+        img: "images/Osmanabad/hatti.jpeg"
+    },
+    "Ganj Golai": {
+        description: "A circular market complex that's the commercial hub of Osmanabad, known for its symmetry and design.",
+        img: "images/Osmanabad/ganj.jpeg"
+    },
+    "Chakur Lake": {
+        description: "A serene lake attracting locals and tourists alike for picnics, photography, and peaceful relaxation.",
+        img: "images/Osmanabad/chakur.jpeg"
+    },
+
+    //Chandrapur
+
+    "Tadoba Andhari Tiger Reserve": {
+        description: "One of the most famous tiger reserves in India, Tadoba offers thrilling wildlife safaris and a chance to spot Bengal tigers in their natural habitat.",
+        img: "images/Chandrapur/tadoba.jpeg"
+    },
+    "Mahakali Temple": {
+        description: "A revered temple dedicated to Goddess Mahakali, attracting thousands of devotees, especially during festivals.",
+        img: "images/Chandrapur/mahakali.jpeg"
+    },
+    "Anandwan": {
+        description: "Founded by Baba Amte, Anandwan is a self-sustaining community for people with disabilities, offering a unique and inspiring experience.",
+        img: "images/Chandrapur/anand.jpeg"
+    },
+    "Bhadravati Jain Temple": {
+        description: "A beautifully crafted temple reflecting ancient Jain architecture and a peaceful ambiance for spiritual seekers.",
+        img: "images/Chandrapur/bhadravati.jpeg"
+    },
+    "Junona Lakes": {
+        description: "A serene lake ideal for nature lovers and photographers, offering tranquil surroundings and picturesque views.",
+        img: "images/Chandrapur/junona.jpeg"
+    },
+    "Ramdegi Temple": {
+        description: "A temple dedicated to Lord Ram, located in a peaceful forested area with mythological significance.",
+        img: "images/Chandrapur/ramdegi.jpeg"
+    },
+    "Bhamragarh Wildlife Sanctuary": {
+        description: "A lesser-known yet rich sanctuary offering dense forests and a variety of wildlife, perfect for adventurers and nature enthusiasts.",
+        img: "images/Chandrapur/bhamragarh.jpeg"
+    },
+    "Gond Raja Fort": {
+        description: "An old fort symbolizing the valor of the Gond dynasty, featuring ancient architecture and a rich history.",
+        img: "images/Chandrapur/gond.jpeg"
+    },
+    "Erai Dam": {
+        description: "A large dam providing water to the region and also a peaceful spot for picnics and watching the sunset.",
+        img: "images/Chandrapur/erai.jpeg"
+    },
+    "Ballarpur Fort": {
+        description: "Historical ruins located near the Wardha river, showcasing the legacy of Ballal kings and the region’s medieval importance.",
+        img: "images/Chandrapur/ballarpur.jpeg"
+    },
+
+    //Gondiya
+
+    "Navegaon National Park": {
+        description: "A lush forested park known for its lake, watch towers, and rich biodiversity including birds, leopards, and deer.",
+        img: "images/Gondia/navegaon.jpeg"
+    },
+    "Itiadoh Dam": {
+        description: "A scenic dam site offering panoramic views and a calm environment, perfect for relaxing and nature walks.",
+        img: "images/Gondia/itiadoh.jpeg"
+    },
+    "Nagzira Wildlife Sanctuary": {
+        description: "A major attraction for wildlife lovers, this sanctuary is home to tigers, leopards, and a wide variety of flora and fauna.",
+        img: "images/Gondia/nagzira.jpeg"
+    },
+    "Hazara Falls": {
+        description: "A beautiful seasonal waterfall surrounded by dense forest, making it a perfect monsoon getaway.",
+        img: "images/Gondia/hazara.jpeg"
+    },
+    "Darekasa Caves": {
+        description: "Ancient caves believed to have historical and archaeological significance, nestled in serene surroundings.",
+        img: "images/Gondia/darekasa.jpeg"
+    },
+    "Kachargadh Caves": {
+        description: "Popular among history buffs and trekkers, these caves are carved into hills and have tribal significance.",
+        img: "images/Gondia/kachargadh.jpeg"
+    },
+    "Chulbandh Dam": {
+        description: "A peaceful site ideal for birdwatching and spending quiet time in nature.",
+        img: "images/Gondia/chulbandh.jpeg"
+    },
+    "Bodalkasa Dam": {
+        description: "Known for its scenic beauty and boating facilities, it's a favorite weekend spot for locals.",
+        img: "images/Gondia/bodalkasa.jpeg"
+    },
+    "Chorkhamara Wildlife Sanctuary": {
+        description: "This sanctuary offers a quieter alternative to larger parks, ideal for observing animals in a more intimate setting.",
+        img: "images/Gondia/chorkhamara.jpeg"
+    },
+    "Shivkund": {
+        description: "A natural spring believed to have sacred significance, drawing visitors for both spiritual and scenic appeal.",
+        img: "images/Gondia/shivkund.jpeg"
+    }, 
+
+    //Bhandara
+    "Ambagad Fort": {
+        description: "An ancient hilltop fort offering scenic views and a glimpse into Bhandara’s historical past.",
+        img: "images/Bhandara/ambagad.jpeg"
+    },
+    "Andhalgaon (Black Saree Village)": {
+        description: "Famous for its unique black sarees, this village showcases traditional textile art and rural culture.",
+        img: "images/Bhandara/andhalgaon.jpeg"
+    },
+    "Korambi Devi Temple": {
+        description: "A serene and revered temple surrounded by greenery, attracting pilgrims and tourists alike.",
+        img: "images/Bhandara/korambi.jpeg"
+    },
+    "Lakhani Temple": {
+        description: "A beautifully constructed temple known for its peaceful ambiance and spiritual significance.",
+        img: "images/Bhandara/lakhani.jpeg"
+    },
+    "Koka Wildlife Sanctuary": {
+        description: "A small yet rich sanctuary ideal for spotting leopards, deer, and various bird species in a calm environment.",
+        img: "images/Bhandara/kka.jpeg"
+    },
+    "Indirasagar Dam": {
+        description: "A scenic dam that serves as a popular picnic spot with views of tranquil waters and lush surroundings.",
+        img: "images/Bhandara/indirasagar.jpeg"
+    },
+    "Gaimukh": {
+        description: "A sacred site with religious importance, featuring a natural spring and a peaceful atmosphere.",
+        img: "images/Bhandara/gaikmukh.jpeg"
+    },
+    "Chandpur Eco Park": {
+        description: "A family-friendly eco-park that promotes environmental awareness and offers nature trails and play areas.",
+        img: "images/Bhandara/chandpur.jpeg"
+    },
+
+    // Nashik
+    "Trimbakeshwar Temple": {
+        description: "One of the twelve Jyotirlingas, this sacred temple is known for its unique three-faced Shiva linga representing Brahma, Vishnu, and Mahesh.",
+        img: "images/Nashik/trimbakeshwar.jpeg"
+    },
+    "Sula Vineyards": {
+        description: "A renowned vineyard and winery offering wine tours, tastings, and beautiful views of the rolling vineyards.",
+        img: "images/Nashik/sula.jpeg"
+    },
+    "Pandav Leni Caves": {
+        description: "A group of ancient rock-cut caves dating back to the 1st century BCE, with inscriptions and carvings of Buddhist significance.",
+        img: "images/Nashik/pandav.jpeg"
+    },
+    "Kalaram Temple": {
+        description: "A historic Hindu temple dedicated to Lord Rama, built in black stone and known for its architectural grandeur.",
+        img: "images/Nashik/kalaram.jpeg"
+    },
+    "Anjaneri Hills": {
+        description: "Believed to be the birthplace of Lord Hanuman, this hill offers a scenic trek with mythological and spiritual significance.",
+        img: "images/Nashik/anjaneri.jpeg"
+    },
+    "Harihar Fort": {
+        description: "Famous for its steep and narrow stone-carved steps, this fort offers a thrilling trek and breathtaking views from the top.",
+        img: "images/Nashik/harihar.jpeg"
+    },
+    "Dugarwadi Waterfall": {
+        description: "A picturesque seasonal waterfall surrounded by lush greenery, ideal for monsoon visits and short hikes.",
+        img: "images/Nashik/dugarwadi.jpeg"
+    },
+    "Ramkund": {
+        description: "A sacred bathing ghat on the Godavari River, believed to be the place where Lord Rama performed his father’s last rites.",
+        img: "images/Nashik/ramkund.jpeg"
+    },
+    "Someshwar Waterfall": {
+        description: "A small and serene waterfall near Gangapur, popular for its calm atmosphere and proximity to the Someshwar Temple.",
+        img: "images/Nashik/someshwar.jpeg"
+    },
+    "Brahmagiri Hill": {
+        description: "A holy hill from where the Godavari River originates, offering panoramic views and spiritual vibes after a steep climb.",
+        img: "images/Nashik/bramhagiri.jpeg"
+    },
+
+    //Ahamadnagar
+
+    "Shirdi Sai Baba Temple": {
+        description: "One of the most visited pilgrimage sites in India, this temple is dedicated to Sai Baba, a revered saint known for his teachings of love and harmony.",
+        img: "images/Ahmednagar/sai.jpeg"
+    },
+    "Ahmednagar Fort": {
+        description: "A historic fort built in the 15th century by Ahmad Nizam Shah, known for its impressive architecture and as the place where Pandit Nehru was imprisoned.",
+        img: "images/Ahmednagar/fort.jpeg"
+    },
+    "Bhandardara Dam": {
+        description: "Also known as Wilson Dam, this picturesque dam is a popular spot for picnics and offers stunning views of surrounding hills and waterfalls.",
+        img: "images/Ahmednagar/bhandardara.jpg"
+    },
+    "Ratangad Fort": {
+        description: "A 400-year-old hill fort overlooking the Bhandardara region, popular among trekkers for its scenic trails and panoramic views.",
+        img: "images/Ahmednagar/Ratangad Fort.jpeg"
+    },
+    "Mula Dam": {
+        description: "A major dam on the Mula river that provides water to surrounding areas and serves as a calm and serene spot for nature lovers.",
+        img: "images/Ahmednagar/mula.jpeg"
+    },
+    "Cavalry Tank Museum": {
+        description: "India’s only museum dedicated to tanks, showcasing a rare collection of vintage armoured vehicles used by the Indian Army.",
+        img: "images/Ahmednagar/cavalry.jpeg"
+    },
+    "Harishchandragad Fort": {
+        description: "A legendary fort known for its challenging treks, ancient temples, and the famous Konkan Kada cliff with dramatic views.",
+        img: "images/Ahmednagar/harishchandra.jpeg"
+    },
+    "Rehekuri Blackbuck Sanctuary": {
+        description: "A wildlife sanctuary dedicated to the conservation of blackbucks, offering a great opportunity to witness these graceful antelopes in their natural habitat.",
+        img: "images/Ahmednagar/rehekuri.jpeg"
+    },
+    "Meherabad": {
+        description: "The spiritual center and resting place of Meher Baba, a revered spiritual master, attracting followers from all over the world.",
+        img: "images/Ahmednagar/meherbad.jpeg"
+    },
+    "Sandhan Valley": {
+        description: "Also known as the Valley of Shadows, this deep and narrow canyon is a paradise for trekkers and adventure seekers.",
+        img: "images/Ahmednagar/sundhan.jpeg"
+    },
+
+    //Akola
+
+    "Raj Rajeshwar Temple": {
+        description: "An ancient temple dedicated to Lord Shiva, Raj Rajeshwar Temple is a spiritual hub for devotees, known for its serene environment and religious significance.",
+        img: "images/Akola/raj.jpeg"
+    },
+    "Narnala Fort": {
+        description: "A majestic hill fort located in the Satpura range, Narnala Fort is rich in history and architecture, offering panoramic views of the surrounding landscape.",
+        img: "images/Akola/narnala.jpeg"
+    },
+    "Akola Fort": {
+        description: "Built during the Mughal era, Akola Fort stands as a historical landmark reflecting the rich past of the region with its robust walls and ancient gateways.",
+        img: "images/Akola/akola.jpeg"
+    },
+    "Shegaon Anand Sagar": {
+        description: "A beautiful spiritual and recreational complex developed by Shri Gajanan Maharaj Sansthan, featuring a meditation center, gardens, and musical fountains.",
+        img: "images/Akola/anand.jpeg"
+    },
+    "Katepurna Wildlife Sanctuary": {
+        description: "This sanctuary is home to a variety of flora and fauna, including deer and blackbucks, making it a haven for wildlife enthusiasts and nature lovers.",
+        img: "images/Akola/katepurn.jpeg"
+    },
+    "Nepti Dam": {
+        description: "A peaceful spot known for its scenic beauty and calm surroundings, Nepti Dam is perfect for picnics and short getaways.",
+        img: "images/Akola/nepti.jpeg"
+    },
+    "Balapur Fort": {
+        description: "Located at the confluence of rivers, Balapur Fort has historical importance and offers a glimpse into the region’s medieval military architecture.",
+        img: "images/Akola/balapur.jpeg"
+    },
+    "Shri Sant Gajanan Maharaj Mandir": {
+        description: "A sacred temple in Shegaon dedicated to the revered saint Gajanan Maharaj, attracting thousands of devotees throughout the year.",
+        img: "images/Akola/gajanan.jpeg"
+    },
+    "Chikhaldara Hill Station": {
+        description: "The only hill station in Vidarbha region, Chikhaldara is known for its cool climate, coffee plantations, and breathtaking views of valleys and forests.",
+        img: "images/Akola/chikhaldhara.jpeg"
+    },
+    "Salasar Balaji Temple": {
+        description: "A serene temple dedicated to Lord Hanuman, Salasar Balaji Temple is known for its spiritual ambiance and beautiful idol of Balaji.",
+        img: "images/Akola/salasar.jpeg"
+    },
+};
+   
+
+      
+
+      // Dummy nearby hotels data.
+      const nearbyHotels = {
+   "Dr Babasaheb Ambedkar Museum & Memorial": [
+      { name: "The O Hotel Pune", rating: "4★", price: "₹6000/night" },
+      { name: "Hotel Shree Panchratna", rating: "3★", price: "₹3500/night" }
+   ],
+   "Lonavala": [
+      { name: "Fariyas Resort", rating: "5★", price: "₹8000/night" },
+      { name: "Hotel Lonavala", rating: "3★", price: "₹2500/night" },
+      { name: "Della Resorts", rating: "5★", price: "₹12000/night" }
+   ],
+   "Khandala": [
+      { name: "Khandala Resort", rating: "4★", price: "₹5000/night" },
+      { name: "Hotel Green Valley", rating: "3★", price: "₹3000/night" }
+   ],
+   "Shaniwar Wada": [
+      { name: "The Pride Hotel Pune", rating: "4★", price: "₹7000/night" },
+      { name: "Hotel Sagar Plaza", rating: "3★", price: "₹4000/night" }
+   ],
+   "Aga Khan Palace": [
+      { name: "Oakwood Premier Pune", rating: "5★", price: "₹11000/night" },
+      { name: "Hotel Sunder", rating: "3★", price: "₹2000/night" }
+   ],
+   "Rajiv Gandhi Zoo": [
+      { name: "The Corinthians Resort & Club", rating: "5★", price: "₹9000/night" },
+      { name: "Hotel Central Park", rating: "4★", price: "₹4500/night" }
+   ],
+   "Jejuri": [
+      { name: "Hotel Shubham", rating: "3★", price: "₹1500/night" },
+      { name: "Hotel Suryakiran", rating: "3★", price: "₹2000/night" }
+   ],
+   "Sinhagad Fort": [
+      { name: "Fort JadhavGADH", rating: "5★", price: "₹10000/night" },
+      { name: "Neelkanth Patang", rating: "4★", price: "₹3000/night" }
+   ],
+   "Lohagad Fort": [
+      { name: "Lohagad Fort Resort", rating: "4★", price: "₹5000/night" },
+      { name: "Panshet Dam Resort", rating: "3★", price: "₹3500/night" }
+   ],
+   "Dagdu Seth Ganesh Temple": [
+      { name: "Hotel Aurora Towers", rating: "4★", price: "₹5500/night" },
+      { name: "Hotel Shree Krishna", rating: "3★", price: "₹2500/night" }
+   ],
+   "Sarasbaug-Peshve Park": [
+      { name: "Hyatt Pune", rating: "5★", price: "₹9500/night" },
+      { name: "Hotel Surya Villa", rating: "3★", price: "₹3000/night" }
+   ],
+   "Khadakwasala Dam": [
+      { name: "Khidki Village Resort", rating: "4★", price: "₹6000/night" },
+      { name: "Hotel Lake View", rating: "3★", price: "₹2800/night" }
+   ],
+   "Laal Mahaal": [
+      { name: "Radisson Blu Pune", rating: "5★", price: "₹8500/night" },
+      { name: "Hotel Rajpath", rating: "3★", price: "₹3200/night" }
+   ],
+   "Shivsrushti Historical Theme Park Pune": [
+      { name: "Lemon Tree Premier", rating: "4★", price: "₹6500/night" },
+      { name: "Hotel Shree Hari", rating: "3★", price: "₹2200/night" }
+   ],
+   "Mahatma Phule Museum": [
+      { name: "Courtyard by Marriott", rating: "5★", price: "₹9000/night" },
+      { name: "Hotel Shree Panchratna", rating: "3★", price: "₹3500/night" }
+   ],
+   "Joshi's Museum Of Miniature Railways": [
+      { name: "The O Hotel Pune", rating: "4★", price: "₹6000/night" },
+      { name: "Hotel Rahul", rating: "3★", price: "₹2500/night" }
+   ],
+   "Phule Wada": [
+      { name: "Ibis Pune", rating: "4★", price: "₹5000/night" },
+      { name: "Hotel Sagar", rating: "3★", price: "₹2000/night" }
+   ],
+   "Parvati Hill": [
+      { name: "The Pride Hotel Pune", rating: "4★", price: "₹7000/night" },
+      { name: "Hotel Sunder", rating: "3★", price: "₹2000/night" }
+   ],
+   "Vishrambaug Wada": [
+      { name: "Hyatt Pune", rating: "5★", price: "₹9500/night" },
+      { name: "Hotel Surya Villa", rating: "3★", price: "₹3000/night" }
+   ],
+   "P L Deshpande Garden": [
+      { name: "Lemon Tree Premier", rating: "4★", price: "₹6500/night" },
+      { name: "Hotel Shree Krishna", rating: "3★", price: "₹2500/night" }
+   ],
+   "Mahadji Shinde Chhatri": [
+      { name: "Courtyard by Marriott", rating: "5★", price: "₹9000/night" },
+      { name: "Hotel Rajpath", rating: "3★", price: "₹3200/night" }
+   ],
+   "Blades of Glory Cricket Museum": [
+      { name: "Radisson Blu Pune", rating: "5★", price: "₹8500/night" },
+      { name: "Hotel Central Park", rating: "4★", price: "₹4500/night" }
+   ],
+   "Vetal Tekdi": [
+      { name: "The O Hotel Pune", rating: "4★", price: "₹6000/night" },
+      { name: "Hotel Shree Hari", rating: "3★", price: "₹2200/night" }
+   ],
+   "Alibaug Beach": [
+      { name: "Radisson Blu Resort Alibaug", rating: "5★", price: "₹12000/night" },
+      { name: "Palm Beach Resort", rating: "4★", price: "₹7000/night" }
+   ],
+   "Raigad Fort": [
+      { name: "MTDC Raigad", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Hill View", rating: "3★", price: "₹2000/night" }
+   ],
+   "Mahabaleshwar": [
+      { name: "Strawberry Inn", rating: "3★", price: "₹2500/night" },
+      { name: "Hilltop Retreat", rating: "4★", price: "₹4000/night" }
+   ],
+   "Tarkarli Beach": [
+      { name: "Sai Resort Tarkarli", rating: "4★", price: "₹5000/night" },
+      { name: "Konkan Swad Resort", rating: "3★", price: "₹3000/night" }
+   ],
+   "Global Vipassana Pagoda": [
+      { name: "The Resort Mumbai", rating: "5★", price: "₹10000/night" },
+      { name: "Hotel Supreme", rating: "3★", price: "₹3500/night" }
+   ],
+   "Chaityabhoomi Dr. Babasaheb Ambedkar Smarak": [
+      { name: "Grand Hyatt Mumbai", rating: "5★", price: "₹15000/night" },
+      { name: "Hotel City Palace", rating: "3★", price: "₹4000/night" }
+   ],
+   "Shree Siddhivinayak Temple": [
+      { name: "Taj Lands End", rating: "5★", price: "₹18000/night" },
+      { name: "Hotel Midtown", rating: "4★", price: "₹6000/night" }
+   ],
+   "Gateway Of India Mumbai": [
+      { name: "Taj Mahal Palace", rating: "5★", price: "₹25000/night" },
+      { name: "Hotel Marine Plaza", rating: "4★", price: "₹8000/night" }
+   ],
+   "Elephanta Caves": [
+      { name: "The Resort Mumbai", rating: "5★", price: "₹10000/night" },
+      { name: "Hotel Supreme", rating: "3★", price: "₹3500/night" }
+   ],
+   "Sanjay Gandhi National Park": [
+      { name: "The Retreat Hotel", rating: "4★", price: "₹7000/night" },
+      { name: "Hotel Royal Inn", rating: "3★", price: "₹3000/night" }
+   ],
+   "Chhatrapati Shivaji Maharaj Vastu Sangrahalaya": [
+      { name: "Taj Mahal Palace", rating: "5★", price: "₹25000/night" },
+      { name: "Hotel Marine Plaza", rating: "4★", price: "₹8000/night" }
+   ],
+   "Mani Bhavan Gandhi Sangrahalaya": [
+      { name: "Trident Nariman Point", rating: "5★", price: "₹15000/night" },
+      { name: "Hotel City Palace", rating: "3★", price: "₹4000/night" }
+   ],
+   "Haji Ali Dargah": [
+      { name: "The Oberoi Mumbai", rating: "5★", price: "₹20000/night" },
+      { name: "Hotel Midtown", rating: "4★", price: "₹6000/night" }
+   ],
+   "Bandra Worli Sea Link Bridge": [
+      { name: "Taj Lands End", rating: "5★", price: "₹18000/night" },
+      { name: "Hotel Royal Inn", rating: "3★", price: "₹3000/night" }
+   ],
+   "Jehangir Art Gallery": [
+      { name: "The Taj Mahal Palace", rating: "5★", price: "₹25000/night" },
+      { name: "Hotel Marine Plaza", rating: "4★", price: "₹8000/night" }
+   ],
+   "Marine Drive": [
+      { name: "The Oberoi Mumbai", rating: "5★", price: "₹20000/night" },
+      { name: "Hotel Supreme", rating: "3★", price: "₹3500/night" }
+   ],
+   "Snow Kingdom (Mumbai)": [
+      { name: "The Resort Mumbai", rating: "5★", price: "₹10000/night" },
+      { name: "Hotel Royal Inn", rating: "3★", price: "₹3000/night" }
+   ],
+   "Dadasaheb Phalke Chitranagari": [
+      { name: "The Retreat Hotel", rating: "4★", price: "₹7000/night" },
+      { name: "Hotel City Palace", rating: "3★", price: "₹4000/night" }
+   ],
+   "Basilica of Our Lady of the Mount (Mount St Mary Church)": [
+      { name: "Grand Hyatt Mumbai", rating: "5★", price: "₹15000/night" },
+      { name: "Hotel Midtown", rating: "4★", price: "₹6000/night" }
+   ],
+   "Bandra Fort": [
+      { name: "Taj Lands End", rating: "5★", price: "₹18000/night" },
+      { name: "Hotel Royal Inn", rating: "3★", price: "₹3000/night" }
+   ],
+   "Rajabai Clock Tower": [
+      { name: "The Taj Mahal Palace", rating: "5★", price: "₹25000/night" },
+      { name: "Hotel Marine Plaza", rating: "4★", price: "₹8000/night" }
+   ],
+   "Aksa Beach": [
+      { name: "The Resort Mumbai", rating: "5★", price: "₹10000/night" },
+      { name: "Hotel Supreme", rating: "3★", price: "₹3500/night" }
+   ],
+   "Juhu Beach": [
+      { name: "JW Marriott Mumbai", rating: "5★", price: "₹18000/night" },
+      { name: "Hotel Sun-n-Sand", rating: "4★", price: "₹9000/night" }
+   ],
+   "Deekshabhoomi": [
+      { name: "Tuli Imperial", rating: "5★", price: "₹8000/night" },
+      { name: "Hotel Centre Point", rating: "4★", price: "₹4000/night" }
+   ],
+   "Pench Tiger Reserve": [
+      { name: "Pench Jungle Camp", rating: "4★", price: "₹6000/night" },
+      { name: "Tuli Tiger Corridor", rating: "5★", price: "₹10000/night" }
+   ],
+   "Dragon Palace": [
+      { name: "Hotel Pride", rating: "4★", price: "₹5000/night" },
+      { name: "Hotel Airport", rating: "3★", price: "₹2500/night" }
+   ],
+   "Shri Ganesh Mandir Tekdi": [
+      { name: "Tuli Imperial", rating: "5★", price: "₹8000/night" },
+      { name: "Hotel Centre Point", rating: "4★", price: "₹4000/night" }
+   ],
+   "Hazrat Baba Tajuddin Dargah": [
+      { name: "Hotel Pride", rating: "4★", price: "₹5000/night" },
+      { name: "Hotel Airport", rating: "3★", price: "₹2500/night" }
+   ],
+   "Ramtek": [
+      { name: "MTDC Ramtek", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Green Park", rating: "3★", price: "₹1800/night" }
+   ],
+   "Fun N Food Village Nagpur": [
+      { name: "Tuli Imperial", rating: "5★", price: "₹8000/night" },
+      { name: "Hotel Centre Point", rating: "4★", price: "₹4000/night" }
+   ],
+   "Mahalaxmi Temple, Kolhapur": [
+      { name: "The Pavilion", rating: "4★", price: "₹5000/night" },
+      { name: "Hotel Pearl", rating: "3★", price: "₹2500/night" }
+   ],
+   "Shahu Palace": [
+      { name: "Sayaji Hotel", rating: "5★", price: "₹7000/night" },
+      { name: "Hotel Ayodhya", rating: "3★", price: "₹2000/night" }
+   ],
+   "Rankala Lake": [
+      { name: "The Pavilion", rating: "4★", price: "₹5000/night" },
+      { name: "Hotel Pearl", rating: "3★", price: "₹2500/night" }
+   ],
+   "Sajja Kothi": [
+      { name: "Sayaji Hotel", rating: "5★", price: "₹7000/night" },
+      { name: "Hotel Ayodhya", rating: "3★", price: "₹2000/night" }
+   ],
+   "Bhavani Mandap": [
+      { name: "The Pavilion", rating: "4★", price: "₹5000/night" },
+      { name: "Hotel Pearl", rating: "3★", price: "₹2500/night" }
+   ],
+   "Teen Darwaja": [
+      { name: "Sayaji Hotel", rating: "5★", price: "₹7000/night" },
+      { name: "Hotel Ayodhya", rating: "3★", price: "₹2000/night" }
+   ],
+   "Panhala Fort": [
+      { name: "MTDC Panhala", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Hill Top", rating: "3★", price: "₹2000/night" }
+   ],
+   "Shalini Palace": [
+      { name: "The Pavilion", rating: "4★", price: "₹5000/night" },
+      { name: "Hotel Pearl", rating: "3★", price: "₹2500/night" }
+   ],
+   "Rautwadi Waterfall, Radhanagri": [
+      { name: "MTDC Radhanagari", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Green Valley", rating: "3★", price: "₹1800/night" }
+   ],
+   "Siddharth Garden": [
+      { name: "Lemon Tree Aurangabad", rating: "4★", price: "₹6000/night" },
+      { name: "Hotel Rama International", rating: "4★", price: "₹5000/night" }
+   ],
+   "Ajanta Caves": [
+      { name: "Hotel Heritage", rating: "3★", price: "₹2000/night" },
+      { name: "Cave View Lodge", rating: "3★", price: "₹1800/night" }
+   ],
+   "Bibi Ka Maqbara": [
+      { name: "Lemon Tree Aurangabad", rating: "4★", price: "₹6000/night" },
+      { name: "Hotel Rama International", rating: "4★", price: "₹5000/night" }
+   ],
+   "Panchakki": [
+      { name: "Hotel Heritage", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Ajanta", rating: "3★", price: "₹1800/night" }
+   ],
+   "Ellora Caves": [
+      { name: "MTDC Ellora", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Kailas", rating: "3★", price: "₹2000/night" }
+   ],
+   "Mhaismal": [
+      { name: "Mhaismal Resort", rating: "3★", price: "₹3000/night" },
+      { name: "Hill View Hotel", rating: "3★", price: "₹2500/night" }
+   ],
+   "Dr. Babasaheb Ambedkar Marathwada University": [
+      { name: "Lemon Tree Aurangabad", rating: "4★", price: "₹6000/night" },
+      { name: "Hotel Rama International", rating: "4★", price: "₹5000/night" }
+   ],
+   "Jayakwadi Dam": [
+      { name: "MTDC Jayakwadi", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Green Park", rating: "3★", price: "₹1800/night" }
+   ],
+   "Sant Dynaneshwar Udyaan": [
+      { name: "Hotel Heritage", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Ajanta", rating: "3★", price: "₹1800/night" }
+   ],
+   "Bhadra Maruti Temple": [
+      { name: "Lemon Tree Aurangabad", rating: "4★", price: "₹6000/night" },
+      { name: "Hotel Rama International", rating: "4★", price: "₹5000/night" }
+   ],
+   "Daultabad Fort": [
+      { name: "MTDC Ellora", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Kailas", rating: "3★", price: "₹2000/night" }
+   ],
+   "Soneri Mahal": [
+      { name: "Hotel Heritage", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Ajanta", rating: "3★", price: "₹1800/night" }
+   ],
+   "Dr. Salim Ali Lake": [
+      { name: "Lemon Tree Aurangabad", rating: "4★", price: "₹6000/night" },
+      { name: "Hotel Rama International", rating: "4★", price: "₹5000/night" }
+   ],
+   "Pittalkhora Caves": [
+      { name: "MTDC Jayakwadi", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Green Park", rating: "3★", price: "₹1800/night" }
+   ],
+   "Gautala Autramghat Sanctuary": [
+      { name: "Gautala Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Autramghat", rating: "3★", price: "₹2000/night" }
+   ],
+
+   // Sangli
+   "Sangli Ganpati Temple": [
+      { name: "Hotel Panchshil", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Sangli Palace", rating: "3★", price: "₹2000/night" }
+   ],
+   "Dandoba Hill Station": [
+      { name: "Dandoba Resort", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Sangli", rating: "3★", price: "₹2200/night" }
+   ],
+   "Khanapur Fort": [
+      { name: "Khanapur Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Fort View", rating: "3★", price: "₹2000/night" }
+   ],
+   "Krishna River View": [
+      { name: "Krishna Riverside Resort", rating: "3★", price: "₹2800/night" },
+      { name: "Hotel Riverfront", rating: "3★", price: "₹2200/night" }
+   ],
+   "Gokak Waterfalls": [
+      { name: "Gokak Valley Resort", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Gokak", rating: "3★", price: "₹2000/night" }
+   ],
+   "Sagareshwar Wildlife Sanctuary": [
+      { name: "Sagareshwar Jungle Lodge", rating: "3★", price: "₹3500/night" },
+      { name: "Hotel Green Earth", rating: "3★", price: "₹2500/night" }
+   ],
+   "Audumbar Datta Mandir": [
+      { name: "Audumbar Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Datta Prasad", rating: "3★", price: "₹1800/night" }
+   ],
+   "Vitthal-Rukmini Temple, Pandharpur": [
+      { name: "Hotel Vitthal", rating: "3★", price: "₹2500/night" },
+      { name: "Pandharpur Pilgrim Inn", rating: "3★", price: "₹2000/night" }
+   ],
+   "Chandoli National Park": [
+      { name: "Chandoli Jungle Camp", rating: "3★", price: "₹4000/night" },
+      { name: "MTDC Chandoli", rating: "3★", price: "₹2500/night" }
+   ],
+   "Narasimha Wadi": [
+      { name: "Narasimha Wadi Retreat", rating: "3★", price: "₹2800/night" },
+      { name: "Hotel Dwarkamai", rating: "3★", price: "₹2200/night" }
+   ],
+
+   // Nanded
+   "Hazur Sahib Gurudwara": [
+      { name: "Gurudwara Sarai", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Pearl", rating: "3★", price: "₹2000/night" }
+   ],
+   "Kandhar Fort": [
+      { name: "Kandhar Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Nanded", rating: "3★", price: "₹2000/night" }
+   ],
+   "Sahastrakund Waterfall": [
+      { name: "Sahastrakund Resort", rating: "3★", price: "₹3000/night" },
+      { name: "Hotel Waterfall View", rating: "3★", price: "₹2200/night" }
+   ],
+   "Unkeshwar Hot Springs": [
+      { name: "Unkeshwar Ayurvedic Resort", rating: "3★", price: "₹3500/night" },
+      { name: "MTDC Unkeshwar", rating: "3★", price: "₹2500/night" }
+   ],
+   "Malegaon Yatra": [
+      { name: "Malegaon Pilgrim Inn", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Yatra", rating: "3★", price: "₹1800/night" }
+   ],
+   "Isapur Dam": [
+      { name: "Isapur Dam Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Dam View", rating: "3★", price: "₹2000/night" }
+   ],
+   "Hottal Temple": [
+      { name: "Hottal Temple Stay", rating: "3★", price: "₹2000/night" },
+      { name: "MTDC Hottal", rating: "3★", price: "₹1800/night" }
+   ],
+   "Mahurgad Fort & Renuka Devi Temple": [
+      { name: "Mahurgad Heritage Stay", rating: "3★", price: "₹3000/night" },
+      { name: "Hotel Renuka", rating: "3★", price: "₹2500/night" }
+   ],
+   "Visawa Garden & Park": [
+      { name: "Visawa Resort", rating: "3★", price: "₹2800/night" },
+      { name: "Hotel Garden View", rating: "3★", price: "₹2200/night" }
+   ],
+   "Nanded Fort": [
+      { name: "Nanded Heritage Hotel", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Nanded", rating: "3★", price: "₹2000/night" }
+   ],
+
+   // Yavatmal
+   "Tipeshwar Wildlife Sanctuary": [
+      { name: "Tipeshwar Jungle Lodge", rating: "3★", price: "₹4000/night" },
+      { name: "MTDC Yavatmal", rating: "3★", price: "₹2500/night" }
+   ],
+   "Kalamb Temple": [
+      { name: "Kalamb Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Temple View", rating: "3★", price: "₹1800/night" }
+   ],
+   "Waghadi River": [
+      { name: "Waghadi Riverside Resort", rating: "3★", price: "₹3000/night" },
+      { name: "Hotel Riverfront", rating: "3★", price: "₹2200/night" }
+   ],
+   "Painganga Wildlife Sanctuary": [
+      { name: "Painganga Jungle Camp", rating: "3★", price: "₹3500/night" },
+      { name: "MTDC Painganga", rating: "3★", price: "₹2500/night" }
+   ],
+   "Mahadev Temple, Ghatanji": [
+      { name: "Ghatanji Temple Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Shivsadan", rating: "3★", price: "₹1800/night" }
+   ],
+   "Jagat Mandir, Darwha": [
+      { name: "Jagat Mandir Dharamshala", rating: "3★", price: "₹1500/night" },
+      { name: "Hotel Darwha", rating: "3★", price: "₹2000/night" }
+   ],
+   "Arni Jain Mandir": [
+      { name: "Arni Jain Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Arni", rating: "3★", price: "₹1800/night" }
+   ],
+   "Pandharkawada Forest": [
+      { name: "Pandharkawada Jungle Resort", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Pandharkawada", rating: "3★", price: "₹2000/night" }
+   ],
+   "Shri Datta Mandir, Digras": [
+      { name: "Digras Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Datta", rating: "3★", price: "₹1800/night" }
+   ],
+
+   // Amravati
+   "Ambadevi Temple": [
+      { name: "Ambadevi Pilgrim Inn", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Amravati", rating: "3★", price: "₹2500/night" }
+   ],
+   "Chatri Talao": [
+      { name: "Chatri Lake Resort", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Amravati", rating: "3★", price: "₹2200/night" }
+   ],
+   "Gugamal National Park": [
+      { name: "Gugamal Jungle Lodge", rating: "3★", price: "₹4000/night" },
+      { name: "MTDC Melghat", rating: "3★", price: "₹2500/night" }
+   ],
+   "Wadali Talao": [
+      { name: "Wadali Lake Resort", rating: "3★", price: "₹2800/night" },
+      { name: "Hotel Green Valley", rating: "3★", price: "₹2200/night" }
+   ],
+   "Melghat Tiger Reserve": [
+      { name: "Melghat Jungle Camp", rating: "3★", price: "₹4500/night" },
+      { name: "MTDC Semadoh", rating: "3★", price: "₹3000/night" }
+   ],
+   "Hurricane Point, Chikhaldara": [
+      { name: "Hurricane View Resort", rating: "3★", price: "₹3500/night" },
+      { name: "MTDC Chikhaldara", rating: "3★", price: "₹2500/night" }
+   ],
+   "Semadoh Lake": [
+      { name: "Semadoh Lake Resort", rating: "3★", price: "₹3000/night" },
+      { name: "Hotel Lake View", rating: "3★", price: "₹2500/night" }
+   ],
+   "Bhakti Dham Temple": [
+      { name: "Bhakti Dham Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Temple Inn", rating: "3★", price: "₹1800/night" }
+   ],
+   "Muktagiri Jain Temples": [
+      { name: "Muktagiri Jain Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Muktagiri", rating: "3★", price: "₹2000/night" }
+   ],
+   "Gavilgad Fort": [
+      { name: "Gavilgad Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Chikhaldara", rating: "3★", price: "₹2000/night" }
+   ],
+
+   // Buldhana
+   "Lonar Crater Lake": [
+      { name: "Lonar Lake Resort", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Lonar", rating: "3★", price: "₹2000/night" }
+   ],
+   "Sindkhed Raja - Birthplace of Rajmata Jijabai": [
+      { name: "Sindkhed Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Jijamata", rating: "3★", price: "₹2000/night" }
+   ],
+   "Anand Sagar": [
+      { name: "Anand Sagar Resort", rating: "4★", price: "₹5000/night" },
+      { name: "Hotel Shegaon", rating: "3★", price: "₹3000/night" }
+   ],
+   "Shegaon - Shri Gajanan Maharaj Temple": [
+      { name: "Gajanan Maharaj Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Shegaon Palace", rating: "3★", price: "₹2500/night" }
+   ],
+   "Khamgaon Ganesh Temple": [
+      { name: "Khamgaon Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Ganesh", rating: "3★", price: "₹1800/night" }
+   ],
+   "Dnyanganga Wildlife Sanctuary": [
+      { name: "Dnyanganga Jungle Lodge", rating: "3★", price: "₹3500/night" },
+      { name: "MTDC Buldhana", rating: "3★", price: "₹2500/night" }
+   ],
+   "Gomukh Temple, Lonar": [
+      { name: "Gomukh Temple Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Lonar", rating: "3★", price: "₹1800/night" }
+   ],
+   "Hanuman Temple, Mehkar": [
+      { name: "Mehkar Pilgrim Inn", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Hanuman", rating: "3★", price: "₹1800/night" }
+   ],
+   "Rajur Ganpati": [
+      { name: "Rajur Temple Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Rajur", rating: "3★", price: "₹1800/night" }
+   ],
+   "Chikhli Mahadev Temple": [
+      { name: "Chikhli Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Shivsadan", rating: "3★", price: "₹1800/night" }
+   ],
+
+   // Solapur
+   "Pandharpur - Shri Vitthal Rukmini Temple": [
+      { name: "Vitthal Dham", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Pandharpur", rating: "3★", price: "₹2500/night" }
+   ],
+   "Akkalkot Swami Samarth Temple": [
+      { name: "Swami Samarth Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Akkalkot", rating: "3★", price: "₹2000/night" }
+   ],
+   "Siddheshwar Temple & Lake": [
+      { name: "Siddheshwar Pilgrim Inn", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Lake View", rating: "3★", price: "₹2500/night" }
+   ],
+   "Great Indian Bustard Sanctuary": [
+      { name: "Bustard Jungle Camp", rating: "3★", price: "₹3500/night" },
+      { name: "MTDC Solapur", rating: "3★", price: "₹2500/night" }
+   ],
+   "Hipparga Lake": [
+      { name: "Hipparga Lake Resort", rating: "3★", price: "₹3000/night" },
+      { name: "Hotel Lakefront", rating: "3★", price: "₹2200/night" }
+   ],
+   "Karmala Fort": [
+      { name: "Karmala Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Karmala", rating: "3★", price: "₹2000/night" }
+   ],
+   "Barshi Bhagwant Temple": [
+      { name: "Barshi Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Bhagwant", rating: "3★", price: "₹1800/night" }
+   ],
+   "Nannaj Wildlife Sanctuary": [
+      { name: "Nannaj Jungle Lodge", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Nannaj", rating: "3★", price: "₹2500/night" }
+   ],
+   "Shree Dahigaun Teerth": [
+      { name: "Dahigaun Jain Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Teerth", rating: "3★", price: "₹2000/night" }
+   ],
+   "Tuljapur Ghat": [
+      { name: "Tuljapur Pilgrim Inn", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Tulja", rating: "3★", price: "₹1800/night" }
+   ],
+
+   // Washim
+   "Balaji Temple": [
+      { name: "Balaji Dham", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Washim", rating: "3★", price: "₹2000/night" }
+   ],
+   "Poharadevi Temple": [
+      { name: "Poharadevi Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Washim Palace", rating: "3★", price: "₹1800/night" }
+   ],
+   "Shri Nrusimha Saraswati Mandir": [
+      { name: "Nrusimha Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Saraswati", rating: "3★", price: "₹2000/night" }
+   ],
+   "Sapna Water Park": [
+      { name: "Sapna Resort", rating: "3★", price: "₹3000/night" },
+      { name: "Hotel Waterpark View", rating: "3★", price: "₹2500/night" }
+   ],
+   "Karanja Lad": [
+      { name: "Karanja Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "MTDC Karanja", rating: "3★", price: "₹1800/night" }
+   ],
+   "Padmawati Devi Temple": [
+      { name: "Padmawati Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Padmawati", rating: "3★", price: "₹2000/night" }
+   ],
+   "Degaon Rameshwar Temple": [
+      { name: "Degaon Temple Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Rameshwar", rating: "3★", price: "₹1800/night" }
+   ],
+   "Shri Chintamani Temple": [
+      { name: "Chintamani Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Chintamani", rating: "3★", price: "₹2000/night" }
+   ],
+   "Ansing Fort": [
+      { name: "Ansing Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Washim", rating: "3★", price: "₹2000/night" }
+   ],
+   "Manora Fort": [
+      { name: "Manora Fort Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Fort View", rating: "3★", price: "₹2000/night" }
+   ],
+
+   // Jalna
+   "Matsyodari Devi Temple": [
+      { name: "Matsyodari Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Jalna", rating: "3★", price: "₹1800/night" }
+   ],
+   "Jalna Fort": [
+      { name: "Jalna Heritage Hotel", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Jalna", rating: "3★", price: "₹2000/night" }
+   ],
+   "Jamb Samarth Temple": [
+      { name: "Jamb Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Samarth", rating: "3★", price: "₹2000/night" }
+   ],
+   "Anandi Swami Temple": [
+      { name: "Anandi Swami Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Anandi", rating: "3★", price: "₹2000/night" }
+   ],
+   "Khandoba Mandir": [
+      { name: "Khandoba Temple Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Khandoba", rating: "3★", price: "₹1800/night" }
+   ],
+   "Moti Talab": [
+      { name: "Moti Talab Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Lake View", rating: "3★", price: "₹2200/night" }
+   ],
+   "Shri Datta Ashram": [
+      { name: "Datta Ashram Stay", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Datta", rating: "3★", price: "₹2000/night" }
+   ],
+   "Dhar Shiv Temple": [
+      { name: "Dhar Temple Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Shivsadan", rating: "3★", price: "₹1800/night" }
+   ],
+
+   // Osmanabad
+   "Tuljapur - Tulja Bhavani Temple": [
+      { name: "Tulja Bhavani Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Tuljapur", rating: "3★", price: "₹2000/night" }
+   ],
+   "Dharashiv Caves": [
+      { name: "Dharashiv Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Osmanabad", rating: "3★", price: "₹2000/night" }
+   ],
+   "Naldurg Fort": [
+      { name: "Naldurg Fort Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Fort View", rating: "3★", price: "₹2000/night" }
+   ],
+   "Yedshi Ramling Wildlife Sanctuary": [
+      { name: "Yedshi Jungle Lodge", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Yedshi", rating: "3★", price: "₹2500/night" }
+   ],
+   "Paranda Fort": [
+      { name: "Paranda Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Paranda", rating: "3★", price: "₹2000/night" }
+   ],
+   "Kallam Stepwell": [
+      { name: "Kallam Stepwell Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Kallam", rating: "3★", price: "₹2000/night" }
+   ],
+   "Bhandarwadi Waterfall": [
+      { name: "Bhandarwadi Nature Camp", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Osmanabad", rating: "3★", price: "₹2500/night" }
+   ],
+   "Hatti Bet": [
+      { name: "Hatti Bet Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Hill View", rating: "3★", price: "₹2000/night" }
+   ],
+   "Ganj Golai": [
+      { name: "Hotel Ganj Golai", rating: "3★", price: "₹2000/night" },
+      { name: "MTDC Osmanabad", rating: "3★", price: "₹1800/night" }
+   ],
+   "Chakur Lake": [
+      { name: "Chakur Lake Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Lakefront", rating: "3★", price: "₹2200/night" }
+   ],
+
+   // Chandrapur
+   "Tadoba Andhari Tiger Reserve": [
+      { name: "Tiger Trails Jungle Lodge", rating: "4★", price: "₹8000/night" },
+      { name: "MTDC Tadoba", rating: "3★", price: "₹4000/night" }
+   ],
+   "Mahakali Temple": [
+      { name: "Mahakali Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Chandrapur", rating: "3★", price: "₹2500/night" }
+   ],
+   "Anandwan": [
+      { name: "Anandwan Guest House", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Anand", rating: "3★", price: "₹2000/night" }
+   ],
+   "Bhadravati Jain Temple": [
+      { name: "Bhadravati Jain Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Bhadravati", rating: "3★", price: "₹2000/night" }
+   ],
+   "Junona Lakes": [
+      { name: "Junona Lake Resort", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Chandrapur", rating: "3★", price: "₹2500/night"}
+         ],
+            
+            "Lonavala": [
+            { name: "Waterfall Cafe", cuisine: "Local", price: "₹800" },
+            { name: "Hilltop Diner", cuisine: "Continental", price: "₹900" }
+            ],
+         "Mahabaleshwar": [
+         { name: "Viewpoint Diner", cuisine: "Local", price: "₹1000" },
+         { name: "Strawberry Cafe", cuisine: "Fusion", price: "₹1100" }
+         ],
+         "Ajanta Caves": [
+         { name: "Cave Side Cafe", cuisine: "Indian", price: "₹700" },
+         { name: "Heritage Restaurant", cuisine: "Mughlai", price: "₹800" }
+         ],
+         "Shirdi": [
+         { name: "Temple Cafe", cuisine: "South Indian", price: "₹600" },
+         { name: "Sai's Kitchen", cuisine: "North Indian", price: "₹750" }
+         ],
+   " Dr Babasaheb Ambedkar Museum & Memorial": [
+      { name: "Vaishali Restaurant", cuisine: "South Indian", price: "₹600" },
+      { name: "Shiv Sagar", cuisine: "Fast Food", price: "₹500" }
+   ],
+   "Lonavala": [
+      { name: "The Kinara Village Dhaba", cuisine: "Punjabi", price: "₹900" },
+      { name: "Rama Krishna", cuisine: "Maharashtrian", price: "₹800" }
+   ],
+   "Khandala": [
+      { name: "Sanjay's Punjabi Dhaba", cuisine: "Punjabi", price: "₹700" },
+      { name: "Sunny's Hotel", cuisine: "Continental", price: "₹850" }
+   ],
+   "Shaniwar Wada": [
+      { name: "Bubba’s Diner", cuisine: "American", price: "₹1000" },
+      { name: "The Fisherman’s Wharf", cuisine: "Coastal", price: "₹1200" }
+   ],
+   "Aga Khan Palace": [
+      { name: "Shabree Restaurant", cuisine: "Maharashtrian", price: "₹700" },
+      { name: "German Bakery", cuisine: "Continental", price: "₹600" }
+   ],
+   "Rajiv Gandhi Zoo": [
+      { name: "Sizzling Wok", cuisine: "Chinese", price: "₹800" },
+      { name: "Kailash Restaurant", cuisine: "North Indian", price: "₹700" }
+   ],
+   "Jejuri": [
+      { name: "Hotel Swagat", cuisine: "Maharashtrian", price: "₹500" },
+      { name: "Shree Ram Krishna", cuisine: "Local", price: "₹600" }
+   ],
+   "Sinhagad Fort": [
+      { name: "Kailas Restaurant", cuisine: "Maharashtrian", price: "₹800" },
+      { name: "Bhira Food Court", cuisine: "Local", price: "₹600" }
+   ],
+   "Lohagad Fort": [
+      { name: "Hotel Shubham", cuisine: "Maharashtrian", price: "₹700" },
+      { name: "Rudra Resort", cuisine: "Indian", price: "₹750" }
+   ],
+
+   // Nashik (continued)
+   "Brahmagiri Hill": [
+      { name: "Brahmagiri Nature Camp", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Trimbakeshwar", rating: "3★", price: "₹2500/night" }
+   ],
+
+   // Ahmednagar
+   "Shirdi Sai Baba Temple": [
+      { name: "Hotel Sai Palace", rating: "3★", price: "₹2500/night" },
+      { name: "Sai Leela Guest House", rating: "3★", price: "₹2000/night" },
+      { name: "Sai Pilgrims Inn", rating: "3★", price: "Donation-based" }
+   ],
+   "Ahmednagar Fort": [
+      { name: "Fort JadhavGADH", rating: "4★", price: "₹5000/night" },
+      { name: "Hotel Rajmata", rating: "3★", price: "₹3000/night" }
+   ],
+   "Bhandardara Dam": [
+      { name: "Bhandardara Lake Resort", rating: "3★", price: "₹4000/night" },
+      { name: "MTDC Bhandardara", rating: "3★", price: "₹3000/night" }
+   ],
+   "Ratangad Fort": [
+      { name: "Ratangad Nature Camp", rating: "3★", price: "₹3500/night" },
+      { name: "Hotel Hilltop", rating: "3★", price: "₹2500/night" }
+   ],
+   "Mula Dam": [
+      { name: "Mula Dam Resort", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Ahmednagar", rating: "3★", price: "₹2500/night" }
+   ],
+   "Cavalry Tank Museum": [
+      { name: "Hotel Ahmednagar", rating: "3★", price: "₹2500/night" },
+      { name: "The Fern Ahmednagar", rating: "4★", price: "₹4500/night" }
+   ],
+   "Harishchandragad Fort": [
+      { name: "Harishchandragad Camps", rating: "3★", price: "₹2000/night" },
+      { name: "MTDC Khireshwar", rating: "3★", price: "₹2500/night" }
+   ],
+   "Rehekuri Blackbuck Sanctuary": [
+      { name: "Rehekuri Nature Stay", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Ahmednagar", rating: "3★", price: "₹2500/night" }
+   ],
+   "Meherabad": [
+      { name: "Meherabad Pilgrim Inn", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Avatar Meher", rating: "3★", price: "₹2000/night" }
+   ],
+   "Sandhan Valley": [
+      { name: "Sandhan Valley Camps", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Bhandardara", rating: "3★", price: "₹3000/night" }
+   ],
+
+   // Akola
+   "Raj Rajeshwar Temple": [
+      { name: "Hotel Rajeshwar", rating: "3★", price: "₹2000/night" },
+      { name: "MTDC Akola", rating: "3★", price: "₹2500/night" }
+   ],
+   "Narnala Fort": [
+      { name: "Narnala Nature Camp", rating: "3★", price: "₹3000/night" },
+      { name: "Hotel Akola Heritage", rating: "3★", price: "₹2500/night" }
+   ],
+   "Akola Fort": [
+      { name: "Hotel Fort View", rating: "3★", price: "₹2500/night" },
+      { name: "The Grand Akola", rating: "3★", price: "₹3000/night" }
+   ],
+   "Shegaon Anand Sagar": [
+      { name: "Anand Sagar Resort", rating: "4★", price: "₹5000/night" },
+      { name: "Hotel Shegaon", rating: "3★", price: "₹3000/night" }
+   ],
+   "Katepurna Wildlife Sanctuary": [
+      { name: "Katepurna Jungle Lodge", rating: "3★", price: "₹3500/night" },
+      { name: "MTDC Akola", rating: "3★", price: "₹2500/night" }
+   ],
+   "Nepti Dam": [
+      { name: "Nepti Dam Resort", rating: "3★", price: "₹3000/night" },
+      { name: "Hotel Dam View", rating: "3★", price: "₹2500/night" }
+   ],
+   "Balapur Fort": [
+      { name: "Balapur Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Akola", rating: "3★", price: "₹2000/night" }
+   ],
+   "Shri Sant Gajanan Maharaj Mandir": [
+      { name: "Gajanan Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Shegaon Palace", rating: "3★", price: "₹2500/night" }
+   ],
+   "Chikhaldara Hill Station": [
+      { name: "Chikhaldara Resort", rating: "3★", price: "₹4000/night" },
+      { name: "MTDC Chikhaldara", rating: "3★", price: "₹3000/night" }
+   ],
+   "Salasar Balaji Temple": [
+      { name: "Balaji Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Salasar", rating: "3★", price: "₹2000/night" }
+   ],
+
+   // Buldhana (continued)
+   "Lonar Crater Lake": [
+      { name: "Lonar Lake Resort", rating: "3★", price: "₹3500/night" },
+      { name: "MTDC Lonar", rating: "3★", price: "₹2500/night" }
+   ],
+   "Sindkhed Raja - Birthplace of Rajmata Jijabai": [
+      { name: "Sindkhed Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Jijamata", rating: "3★", price: "₹2000/night" }
+   ],
+   "Anand Sagar": [
+      { name: "Anand Sagar Resort", rating: "4★", price: "₹5000/night" },
+      { name: "Hotel Shegaon", rating: "3★", price: "₹3000/night" }
+   ],
+   "Shegaon - Shri Gajanan Maharaj Temple": [
+      { name: "Gajanan Maharaj Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Shegaon Palace", rating: "3★", price: "₹2500/night" }
+   ],
+   "Khamgaon Ganesh Temple": [
+      { name: "Khamgaon Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Ganesh", rating: "3★", price: "₹1800/night" }
+   ],
+   "Dnyanganga Wildlife Sanctuary": [
+      { name: "Dnyanganga Jungle Lodge", rating: "3★", price: "₹3500/night" },
+      { name: "MTDC Buldhana", rating: "3★", price: "₹2500/night" }
+   ],
+   "Gomukh Temple, Lonar": [
+      { name: "Gomukh Temple Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Lonar", rating: "3★", price: "₹1800/night" }
+   ],
+   "Hanuman Temple, Mehkar": [
+      { name: "Mehkar Pilgrim Inn", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Hanuman", rating: "3★", price: "₹1800/night" }
+   ],
+   "Rajur Ganpati": [
+      { name: "Rajur Temple Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Rajur", rating: "3★", price: "₹1800/night" }
+   ],
+   "Chikhli Mahadev Temple": [
+      { name: "Chikhli Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Shivsadan", rating: "3★", price: "₹1800/night" }
+   ],
+
+   // Solapur (continued)
+   "Pandharpur - Shri Vitthal Rukmini Temple": [
+      { name: "Vitthal Dham", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Pandharpur", rating: "3★", price: "₹2500/night" }
+   ],
+   "Akkalkot Swami Samarth Temple": [
+      { name: "Swami Samarth Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Akkalkot", rating: "3★", price: "₹2000/night" }
+   ],
+   "Siddheshwar Temple & Lake": [
+      { name: "Siddheshwar Pilgrim Inn", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Lake View", rating: "3★", price: "₹2500/night" }
+   ],
+   "Great Indian Bustard Sanctuary": [
+      { name: "Bustard Jungle Camp", rating: "3★", price: "₹3500/night" },
+      { name: "MTDC Solapur", rating: "3★", price: "₹2500/night" }
+   ],
+   "Hipparga Lake": [
+      { name: "Hipparga Lake Resort", rating: "3★", price: "₹3000/night" },
+      { name: "Hotel Lakefront", rating: "3★", price: "₹2200/night" }
+   ],
+   "Karmala Fort": [
+      { name: "Karmala Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Karmala", rating: "3★", price: "₹2000/night" }
+   ],
+   "Barshi Bhagwant Temple": [
+      { name: "Barshi Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Bhagwant", rating: "3★", price: "₹1800/night" }
+   ],
+   "Nannaj Wildlife Sanctuary": [
+      { name: "Nannaj Jungle Lodge", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Nannaj", rating: "3★", price: "₹2500/night" }
+   ],
+   "Shree Dahigaun Teerth": [
+      { name: "Dahigaun Jain Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Teerth", rating: "3★", price: "₹2000/night" }
+   ],
+   "Tuljapur Ghat": [
+      { name: "Tuljapur Pilgrim Inn", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Tulja", rating: "3★", price: "₹1800/night" }
+   ],
+
+   // Washim (continued)
+   "Balaji Temple": [
+      { name: "Balaji Dham", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Washim", rating: "3★", price: "₹2000/night" }
+   ],
+   "Poharadevi Temple": [
+      { name: "Poharadevi Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Washim Palace", rating: "3★", price: "₹1800/night" }
+   ],
+   "Shri Nrusimha Saraswati Mandir": [
+      { name: "Nrusimha Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Saraswati", rating: "3★", price: "₹2000/night" }
+   ],
+   "Sapna Water Park": [
+      { name: "Sapna Resort", rating: "3★", price: "₹3000/night" },
+      { name: "Hotel Waterpark View", rating: "3★", price: "₹2500/night" }
+   ],
+   "Karanja Lad": [
+      { name: "Karanja Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "MTDC Karanja", rating: "3★", price: "₹1800/night" }
+   ],
+   "Padmawati Devi Temple": [
+      { name: "Padmawati Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Padmawati", rating: "3★", price: "₹2000/night" }
+   ],
+   "Degaon Rameshwar Temple": [
+      { name: "Degaon Temple Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Rameshwar", rating: "3★", price: "₹1800/night" }
+   ],
+   "Shri Chintamani Temple": [
+      { name: "Chintamani Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Chintamani", rating: "3★", price: "₹2000/night" }
+   ],
+   "Ansing Fort": [
+      { name: "Ansing Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Washim", rating: "3★", price: "₹2000/night" }
+   ],
+   "Manora Fort": [
+      { name: "Manora Fort Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Fort View", rating: "3★", price: "₹2000/night" }
+   ],
+
+   // Jalna (continued)
+   "Matsyodari Devi Temple": [
+      { name: "Matsyodari Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Jalna", rating: "3★", price: "₹1800/night" }
+   ],
+   "Jalna Fort": [
+      { name: "Jalna Heritage Hotel", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Jalna", rating: "3★", price: "₹2000/night" }
+   ],
+   "Jamb Samarth Temple": [
+      { name: "Jamb Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Samarth", rating: "3★", price: "₹2000/night" }
+   ],
+   "Anandi Swami Temple": [
+      { name: "Anandi Swami Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Anandi", rating: "3★", price: "₹2000/night" }
+   ],
+   "Khandoba Mandir": [
+      { name: "Khandoba Temple Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Khandoba", rating: "3★", price: "₹1800/night" }
+   ],
+   "Moti Talab": [
+      { name: "Moti Talab Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Lake View", rating: "3★", price: "₹2200/night" }
+   ],
+   "Shri Datta Ashram": [
+      { name: "Datta Ashram Stay", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Datta", rating: "3★", price: "₹2000/night" }
+   ],
+   "Dhar Shiv Temple": [
+      { name: "Dhar Temple Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Shivsadan", rating: "3★", price: "₹1800/night" }
+   ],
+
+   // Osmanabad (continued)
+   "Tuljapur - Tulja Bhavani Temple": [
+      { name: "Tulja Bhavani Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Tuljapur", rating: "3★", price: "₹2000/night" }
+   ],
+   "Dharashiv Caves": [
+      { name: "Dharashiv Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Osmanabad", rating: "3★", price: "₹2000/night" }
+   ],
+   "Naldurg Fort": [
+      { name: "Naldurg Fort Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Fort View", rating: "3★", price: "₹2000/night" }
+   ],
+   "Yedshi Ramling Wildlife Sanctuary": [
+      { name: "Yedshi Jungle Lodge", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Yedshi", rating: "3★", price: "₹2500/night" }
+   ],
+   "Paranda Fort": [
+      { name: "Paranda Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Paranda", rating: "3★", price: "₹2000/night" }
+   ],
+   "Kallam Stepwell": [
+      { name: "Kallam Stepwell Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Kallam", rating: "3★", price: "₹2000/night" }
+   ],
+   "Bhandarwadi Waterfall": [
+      { name: "Bhandarwadi Nature Camp", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Osmanabad", rating: "3★", price: "₹2500/night" }
+   ],
+   "Hatti Bet": [
+      { name: "Hatti Bet Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Hill View", rating: "3★", price: "₹2000/night" }
+   ],
+   "Ganj Golai": [
+      { name: "Hotel Ganj Golai", rating: "3★", price: "₹2000/night" },
+      { name: "MTDC Osmanabad", rating: "3★", price: "₹1800/night" }
+   ],
+   "Chakur Lake": [
+      { name: "Chakur Lake Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Lakefront", rating: "3★", price: "₹2200/night" }
+   ],
+
+   // Chandrapur (continued)
+   "Tadoba Andhari Tiger Reserve": [
+      { name: "Tiger Trails Jungle Lodge", rating: "4★", price: "₹8000/night" },
+      { name: "MTDC Tadoba", rating: "3★", price: "₹4000/night" }
+   ],
+   "Mahakali Temple": [
+      { name: "Mahakali Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Chandrapur", rating: "3★", price: "₹2500/night" }
+   ],
+   "Anandwan": [
+      { name: "Anandwan Guest House", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Anand", rating: "3★", price: "₹2000/night" }
+   ],
+   "Bhadravati Jain Temple": [
+      { name: "Bhadravati Jain Dharamshala", rating: "3★", price: "Donation-based" },
+      { name: "Hotel Bhadravati", rating: "3★", price: "₹2000/night" }
+   ],
+   "Junona Lakes": [
+      { name: "Junona Lake Resort", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Chandrapur", rating: "3★", price: "₹2500/night" }
+   ],
+   "Ramdegi Temple": [
+      { name: "Ramdegi Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Ramdegi", rating: "3★", price: "₹1800/night" }
+   ],
+   "Bhamragarh Wildlife Sanctuary": [
+      { name: "Bhamragarh Jungle Camp", rating: "3★", price: "₹3500/night" },
+      { name: "MTDC Bhamragarh", rating: "3★", price: "₹2500/night" }
+   ],
+   "Gond Raja Fort": [
+      { name: "Gond Raja Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Chandrapur", rating: "3★", price: "₹2000/night" }
+   ],
+   "Erai Dam": [
+      { name: "Erai Dam Resort", rating: "3★", price: "₹3000/night" },
+      { name: "Hotel Dam View", rating: "3★", price: "₹2500/night" }
+   ],
+   "Ballarpur Fort": [
+      { name: "Ballarpur Heritage Hotel", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Ballarpur", rating: "3★", price: "₹2000/night" }
+   ],
+
+   // Gondiya (continued)
+   "Navegaon National Park": [
+      { name: "Navegaon Jungle Resort", rating: "3★", price: "₹4000/night" },
+      { name: "MTDC Navegaon", rating: "3★", price: "₹3000/night" }
+   ],
+   "Itiadoh Dam": [
+      { name: "Itiadoh Dam Resort", rating: "3★", price: "₹3000/night" },
+      { name: "Hotel Dam View", rating: "3★", price: "₹2500/night" }
+   ],
+   "Nagzira Wildlife Sanctuary": [
+      { name: "Nagzira Jungle Lodge", rating: "3★", price: "₹4500/night" },
+      { name: "MTDC Nagzira", rating: "3★", price: "₹3500/night" }
+   ],
+   "Hazara Falls": [
+      { name: "Hazara Nature Camp", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Gondiya", rating: "3★", price: "₹2500/night" }
+   ],
+   "Darekasa Caves": [
+      { name: "Darekasa Cave Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Darekasa", rating: "3★", price: "₹2000/night" }
+   ],
+   "Kachargadh Caves": [
+      { name: "Kachargadh Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Gondiya", rating: "3★", price: "₹2000/night" }
+   ],
+   "Chulbandh Dam": [
+      { name: "Chulbandh Dam Resort", rating: "3★", price: "₹3000/night" },
+      { name: "Hotel Dam View", rating: "3★", price: "₹2500/night" }
+   ],
+   "Bodalkasa Dam": [
+      { name: "Bodalkasa Lake Resort", rating: "3★", price: "₹3000/night" },
+      { name: "MTDC Gondiya", rating: "3★", price: "₹2500/night" }
+   ],
+   "Chorkhamara Wildlife Sanctuary": [
+      { name: "Chorkhamara Jungle Camp", rating: "3★", price: "₹3500/night" },
+      { name: "MTDC Chorkhamara", rating: "3★", price: "₹2500/night" }
+   ],
+   "Shivkund": [
+      { name: "Shivkund Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Shivsadan", rating: "3★", price: "₹1800/night" }
+   ],
+
+   // Bhandara (continued)
+   "Ambagad Fort": [
+      { name: "Ambagad Heritage Stay", rating: "3★", price: "₹2500/night" },
+      { name: "MTDC Bhandara", rating: "3★", price: "₹2000/night" }
+   ],
+   "Andhalgaon (Black Saree Village)": [
+      { name: "Andhalgaon Village Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Bhandara", rating: "3★", price: "₹1800/night" }
+   ],
+   "Korambi Devi Temple": [
+      { name: "Korambi Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Korambi", rating: "3★", price: "₹1800/night" }
+   ],
+   "Lakhani Temple": [
+      { name: "Lakhani Temple Stay", rating: "3★", price: "₹2000/night" },
+      { name: "Hotel Lakhani", rating: "3★", price: "₹1800/night" }
+   ],
+   "Koka Wildlife Sanctuary": [
+      { name: "Koka Jungle Lodge", rating: "3★", price: "₹3500/night" },
+      { name: "MTDC Bhandara", rating: "3★", price: "₹2500/night" }
+   ],
+   "Indirasagar Dam": [
+      { name: "Indirasagar Dam Resort", rating: "3★", price: "₹3000/night" },
+      { name: "Hotel Dam View", rating: "3★", price: "₹2500/night" }
+   ],
+   "Gaimukh": [
+      { name: "Gaimukh Pilgrim Stay", rating: "3★", price: "₹2000/night" },
+      { name: "MTDC Bhandara", rating: "3★", price: "₹1800/night" }
+   ],
+   "Chandpur Eco Park": [
+      { name: "Chandpur Nature Resort", rating: "3★", price: "₹2500/night" },
+      { name: "Hotel Eco View", rating: "3★", price: "₹2000/night" }
+   ]
+};
+
+
+
+      // Main function to load details, initialize the map, and populate nearby hotels & restaurants.
+      async function initPage() {
+         const placeParam = getQueryParam("place");
+         const placeNameEl = document.getElementById("placeName");
+         const placeDescriptionEl = document.getElementById("placeDescription");
+         const placePhotoEl = document.getElementById("placePhoto");
+         let coordinates = null;
+
+         if (placeParam) {
+         // Update title and description.
+         placeNameEl.textContent = placeParam;
+         if (placesDetails[placeParam]) {
+            placeDescriptionEl.textContent = placesDetails[placeParam].description;
+            // Set and display the photo if available.
+            if (placesDetails[placeParam].img) {
+               placePhotoEl.src = placesDetails[placeParam].img;
+               placePhotoEl.style.display = "block";
+               console.log("Displaying image:", placesDetails[placeParam].img);
+            } else {
+               console.log("No image URL for:", placeParam);
+            }
+         } else {
+            placeDescriptionEl.textContent = "No additional details available.";
+         }
+         // Fetch coordinates using geocoding.
+         coordinates = await getCoordinates(placeParam);
+         if (!coordinates) {
+            placeDescriptionEl.innerHTML += "<br/><span class='noData'></span>";
+            coordinates = { lat: 19.7515, lng: 75.7139 };
+         }
+         } else {
+         placeNameEl.textContent = "No Tourism Place Selected";
+         placeDescriptionEl.innerHTML = "<span class='noData'>Please provide a place name in the query string.</span>";
+         coordinates = { lat: 19.7515, lng: 75.7139 };
+         }
+
+         // Initialize the Leaflet map.
+         const map = L.map('map').setView([coordinates.lat, coordinates.lng], 10);
+         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+         attribution: '© OpenStreetMap contributors'
+         }).addTo(map);
+         L.marker([coordinates.lat, coordinates.lng])
+         .addTo(map)
+         .bindPopup(`<b>${placeParam || "Tourism Place"}</b>`)
+         .openPopup();
+
+         // Populate Nearby Hotels.
+         const hotelsContainer = document.getElementById("hotelsContainer");
+         if (hotelsContainer) {
+         const hotelsData = nearbyHotels[placeParam] || [];
+         if (hotelsData.length > 0) {
+            hotelsContainer.innerHTML = "";
+            hotelsData.forEach(hotel => {
+               const div = document.createElement("div");
+               div.className = "nearby-item";
+               div.innerHTML = `
+               <h4>${hotel.name}</h4>
+               <p>Rating: ${hotel.rating}</p>
+               <p>Price: ${hotel.price}</p>
+               `;
+               hotelsContainer.appendChild(div);
+            });
+         } else {
+            hotelsContainer.innerHTML = "<p class='noData'>No nearby hotels data available.</p>";
+         }
+         }
+
+         // // Populate Nearby Restaurants.
+         // const restaurantsContainer = document.getElementById("restaurantsContainer");
+         // if (restaurantsContainer) {
+         // const restaurantsData = nearbyRestaurants[placeParam] || [];
+         // if (restaurantsData.length > 0) {
+         //    restaurantsContainer.innerHTML = "";
+         //    restaurantsData.forEach(restaurant => {
+         //       const div = document.createElement("div");
+         //       div.className = "nearby-item";
+         //       div.innerHTML = `
+         //       <h4>${restaurant.name}</h4>
+         //       <p>Cuisine: ${restaurant.cuisine}</p>
+         //       <p>Avg. Price: ${restaurant.price}</p>
+         //       `;
+         //       restaurantsContainer.appendChild(div);
+         //    });
+         // } else {
+         //    restaurantsContainer.innerHTML = "<p class='noData'>No nearby restaurants data available.</p>";
+         // }
+         // }
+      }
+
+      // Execute the main function once the page loads.
+      window.onload = initPage;
+   </script>
+   </body>
+   </html>
